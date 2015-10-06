@@ -19,6 +19,9 @@
 package pt.ist.fenixedu.quc.domain;
 
 import java.util.Collection;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang.StringUtils;
 import org.fenixedu.academic.domain.ExecutionCourse;
@@ -91,6 +94,28 @@ public class DelegateInquiryTemplate extends DelegateInquiryTemplate_Base {
             }
         }
         return false;
+    }
+
+    public static int getNumberOfNotAnsweredQuestions(YearDelegate yearDelegate, ExecutionSemester executionSemester) {
+        InquiryTemplate delegateInquiryTemplate = getDelegateInquiryTemplate(executionSemester);
+
+        final ExecutionDegree executionDegree =
+                yearDelegate.getDegree().getExecutionDegreesForExecutionYear(executionSemester.getExecutionYear()).stream()
+                        .findFirst().orElse(null);
+        Set<ExecutionCourse> executionCoursesToInquiries =
+                DelegateUtils.getExecutionCoursesToInquiries(yearDelegate, executionSemester, executionDegree);
+        List<InquiryDelegateAnswer> inquiryDelegateAnswers =
+                yearDelegate.getInquiryDelegateAnswersSet().stream()
+                        .filter(inquiryAnswer -> inquiryAnswer.getExecutionCourse().getExecutionPeriod() == executionSemester)
+                        .collect(Collectors.toList());
+        int numberOfNotAnsweredQuestions =
+                (executionCoursesToInquiries.size() - inquiryDelegateAnswers.size())
+                        * delegateInquiryTemplate.getNumberOfQuestions();
+        int numberOfInquiryQuestions = delegateInquiryTemplate.getNumberOfQuestions();
+        for (InquiryDelegateAnswer inquiryAnswer : inquiryDelegateAnswers) {
+            numberOfNotAnsweredQuestions += numberOfInquiryQuestions - inquiryAnswer.getNumberOfAnsweredQuestions();
+        }
+        return numberOfNotAnsweredQuestions;
     }
 
     public static boolean hasInquiriesToAnswer(YearDelegate yearDelegate, ExecutionSemester executionSemester) {

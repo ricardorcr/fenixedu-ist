@@ -21,7 +21,9 @@ package pt.ist.fenixedu.quc.domain;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.fenixedu.academic.domain.ExecutionCourse;
 import org.fenixedu.academic.domain.ExecutionSemester;
@@ -120,5 +122,18 @@ public class TeacherInquiryTemplate extends TeacherInquiryTemplate_Base {
             }
         }
         return result;
+    }
+
+    public static int getNumberOfNotAnsweredQuestions(Person teacher, ExecutionSemester executionSemester) {
+        InquiryTemplate inquiryTemplate = getTeachingInquiryTemplate(executionSemester);
+        List<InquiryTeacherAnswer> inquiryTeacherAnswers =
+                teacher.getProfessorships(executionSemester).stream().filter(p -> hasToAnswerTeacherInquiry(teacher, p))
+                        .map(p -> p.getInquiryTeacherAnswer()).collect(Collectors.toList());
+//                person.getInquiryDelegateAnswersSet().stream()
+//                        .filter(inquiryAnswer -> inquiryAnswer.getExecutionCourse().getExecutionPeriod() == executionSemester)
+//                        .collect(Collectors.toList());
+//        
+//        return inquiryTemplate.getNumberOfQuestions() - professorship.getInquiryTeacherAnswer().getNumberOfAnsweredQuestions();
+        return 0;
     }
 }
