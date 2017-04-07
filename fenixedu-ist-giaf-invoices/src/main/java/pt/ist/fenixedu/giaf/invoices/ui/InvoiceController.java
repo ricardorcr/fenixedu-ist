@@ -21,7 +21,6 @@ package pt.ist.fenixedu.giaf.invoices.ui;
 import java.util.stream.Collector;
 import java.util.stream.Collector.Characteristics;
 
-import org.fenixedu.academic.domain.ExecutionYear;
 import org.fenixedu.academic.domain.Person;
 import org.fenixedu.academic.domain.accessControl.AcademicAuthorizationGroup;
 import org.fenixedu.academic.domain.accessControl.academicAdministration.AcademicOperationType;
@@ -78,7 +77,8 @@ public class InvoiceController {
                 @Override
                 public void accept(final String oid, final String user, final String name, final String amount, final String cycleType, final String error, final String args,
                         final String type, final String countryOfVatNumber, final String vatNumber, final String address, final String locality,
-                        final String postCode, final String countryOfAddress, final String paymentMethod) {
+                        final String postCode, final String countryOfAddress, final String paymentMethod,
+                        final String documentNumber, final String action) {
                     errors.append(oid + " " + error + " : " + args + "\n");
                 }
             };
