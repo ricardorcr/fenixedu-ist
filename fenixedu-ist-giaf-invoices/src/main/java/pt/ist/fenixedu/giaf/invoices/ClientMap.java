@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Locale;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
@@ -12,8 +13,8 @@ import org.fenixedu.academic.domain.Country;
 import org.fenixedu.academic.domain.Person;
 import org.fenixedu.academic.domain.contacts.PhysicalAddress;
 import org.fenixedu.bennu.GiafInvoiceConfiguration;
-import org.fenixedu.bennu.core.domain.User;
 
+import com.google.common.base.Strings;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
@@ -128,7 +129,12 @@ public class ClientMap {
         final String locality = Utils.limitFormat(35, address.getAreaOfAreaCode());
         final String postCode = Utils.hackAreaCode(address.getAreaCode(), address.getCountryOfResidence(), person);
         final String country = address.getCountryOfResidence().getCode();
+        final String nationality = person.getCountry().getCountryNationality().getContent(new Locale("pt"));
         final String name = Utils.limitFormat(50, Utils.getDisplayName(person));
+        final String city = !Strings.isNullOrEmpty(person.getDistrictSubdivisionOfResidence()) ? person
+                .getDistrictSubdivisionOfResidence() : "Desconhecido";
+        final String region =
+                !Strings.isNullOrEmpty(person.getDistrictOfResidence()) ? person.getDistrictOfResidence() : "Desconhecido";
 
         final JsonObject jo = new JsonObject();
         jo.addProperty("id", clientCode);
@@ -147,6 +153,9 @@ public class ClientMap {
         jo.addProperty("iban", "");
         jo.addProperty("swift", "");
         jo.addProperty("paymentMethod", "CH");
+        jo.addProperty("city", city);
+        jo.addProperty("region", region);
+        jo.addProperty("nationality", nationality);
 
         return jo;
     }
@@ -185,7 +194,9 @@ public class ClientMap {
                             j.get("locality").getAsString(),
                             j.get("postCode").getAsString(),
                             j.get("countryOfAddress").getAsString(),
-                            j.get("paymentMethod").getAsString());
+                            j.get("paymentMethod").getAsString(),
+                            "",
+                            "");
                 }
             }
             return true;
@@ -205,7 +216,9 @@ public class ClientMap {
                     j.get("locality").getAsString(),
                     j.get("postCode").getAsString(),
                     j.get("countryOfAddress").getAsString(),
-                    j.get("paymentMethod").getAsString());
+                    j.get("paymentMethod").getAsString(),
+                    "", 
+                    "");
             return false;
         }
     }

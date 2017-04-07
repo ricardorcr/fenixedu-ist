@@ -121,14 +121,10 @@ public class Utils {
         try {
             originalAmountToPay = event.getOriginalAmountToPay();
         } catch (final DomainException ex) {
-            if (hasAnyGiafEntry(event)) {
-                logError(consumer, "Unable to Determine Amount", event, null, "", null, null, null, null, event);
-            }
+            logError(consumer, "Unable to Determine Amount", event, null, "", null, null, null, null, event);
             return false;
         } catch (final NullPointerException ex) {
-            if (hasAnyGiafEntry(event)) {
-                logError(consumer, "Unable to Determine Amount", event, null, "", null, null, null, null, event);
-            }
+            logError(consumer, "Unable to Determine Amount", event, null, "", null, null, null, null, event);
             return false;
         }
 
@@ -284,6 +280,8 @@ public class Utils {
                 "",
                 address == null ? "" : address.getPostalCode(),
                 countryOfAddress == null ? "" : countryOfAddress.getCode(),
+                "",
+                "",
                 "");
     }
 
@@ -326,6 +324,12 @@ public class Utils {
     public static ExecutionYear executionYearOf(final Event event) {
         return event instanceof AnnualEvent ? ((AnnualEvent) event).getExecutionYear() : ExecutionYear.readByDateTime(event
                 .getWhenOccured());
+    }
+
+    public static String getDegreeAcronym(final Event event) {
+        return event instanceof GratuityEvent ? ((GratuityEvent) event).getDegree()
+                .getSigla() : event instanceof PhdGratuityEvent ? ((PhdGratuityEvent) event).getPhdIndividualProgramProcess()
+                        .getPhdProgram().getAcronym() : "";
     }
 
     private static DebtCycleType getCycleType(Collection<CycleType> cycleTypes) {
@@ -491,11 +495,12 @@ public class Utils {
                 return;
             } catch (final Throwable e) {
                 if (c > 0 && c % 5 == 0) {
-                    LOGGER.debug("Failed write of invoice file: % - Fail count: %s", path.toString(), c);
+                    LOGGER.debug("Failed write of file: % - Fail count: %s", path.toString(), c);
                 }
                 try {
                     Thread.sleep(5000);
                 } catch (final InterruptedException e1) {
+                    e1.printStackTrace();
                 }
             }
         }
