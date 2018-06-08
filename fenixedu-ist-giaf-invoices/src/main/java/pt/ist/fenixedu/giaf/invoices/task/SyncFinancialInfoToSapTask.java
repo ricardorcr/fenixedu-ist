@@ -10,7 +10,6 @@ import javax.mail.internet.AddressException;
 
 import org.fenixedu.academic.domain.Person;
 import org.fenixedu.academic.domain.accounting.Event;
-import org.fenixedu.academic.util.Money;
 import org.fenixedu.bennu.GiafInvoiceConfiguration;
 import org.fenixedu.bennu.core.domain.Bennu;
 import org.fenixedu.bennu.scheduler.CronTask;
@@ -79,13 +78,13 @@ public class SyncFinancialInfoToSapTask extends CronTask {
         touch("Updated existing client information.");
 
         touch("Processing events...");
-//        unfilteredEventStream(errorLogConsumer)
-//                .forEach(e -> EventProcessor.syncEventWithSap(clientMap, errorLogConsumer, elogger, e));
-        Money amountInDebt = unfilteredEventStream(errorLogConsumer)
-                .map(e -> EventProcessor.syncEventWithSap(clientMap, errorLogConsumer, elogger, e))
-                .reduce(Money.ZERO, Money::add);
-        touch("O valor em dívida desde 2016/2017 neste momento é de: " + amountInDebt.toPlainString());
-        touch("Completed processing events.");
+        unfilteredEventStream(errorLogConsumer)
+                .forEach(e -> EventProcessor.syncEventWithSap(clientMap, errorLogConsumer, elogger, e));
+//        Money amountInDebt = unfilteredEventStream(errorLogConsumer)
+//                .map(e -> EventProcessor.syncEventWithSap(clientMap, errorLogConsumer, elogger, e))
+//                .reduce(Money.ZERO, Money::add);
+//        touch("O valor em dívida desde 2016/2017 neste momento é de: " + amountInDebt.toPlainString());
+//        touch("Completed processing events.");
 
         touch("Dumping error messages.");
         final ByteArrayOutputStream stream = new ByteArrayOutputStream();

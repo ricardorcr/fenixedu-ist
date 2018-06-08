@@ -4,8 +4,9 @@ import org.fenixedu.bennu.core.domain.User;
 
 public class SapDocumentFile extends SapDocumentFile_Base {
     
-    public SapDocumentFile() {
+    public SapDocumentFile(String filename, byte[] content) {
         super();
+        init(filename, filename, content);
     }
     
     @Override

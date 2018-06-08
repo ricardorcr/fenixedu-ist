@@ -11,15 +11,44 @@ class SapRequest {
 	String sapDocumentNumber;
 	String clientId;
 	Money value;
-	SapRequestType type;
-	DateTime whenRequested;
-	String paymentId;
+	SapRequestType requestType;
+	DateTime whenSent;
+	DateTime whenCreated;
 	Money advancement;
+	boolean sent;
 	String request;
+	String answer;
 }
 
 class SapDocumentFile extends .org.fenixedu.bennu.io.domain.GenericFile {
 }
+
+relation SapRequestSapRequestAnnulled {
+	SapRequest playsRole originalRequest {
+	    multiplicity 0..1;
+    }
+    SapRequest playsRole anulledRequest {
+	    multiplicity 0..1;
+    }
+}
+      
+relation SapRequestEvent {
+	SapRequest playsRole sapRequest {
+	    multiplicity *;
+    }
+    .org.fenixedu.academic.domain.accounting.Event playsRole event {
+    	multiplicity 1..1;
+    }
+}
+       
+relation SapRequestPayment {
+	SapRequest playsRole sapRequest {
+	    multiplicity *;
+    }
+    .org.fenixedu.academic.domain.accounting.AccountingTransaction playsRole payment {
+    	multiplicity 0..1;
+    }   
+}       
         
 relation SapRequestSapDocumentFile {
 	SapRequest playsRole sapRequest {
