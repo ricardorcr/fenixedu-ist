@@ -90,13 +90,13 @@ public class SapExporter extends CustomTask {
     private static final int MAX_REASON = 50;
     private static final String VAT_TAX_CODE = "ISE";
     private static final BigDecimal VAT_TAX = BigDecimal.ZERO;
-    private static final String DEBT = "ND190000";
+    private static final String DEBT = "ND200000";
     private static final String PAYMENT = "NP190000";
     private static final String DEBT_REGISTER = "NG2";
     private static final String DEBT_EXEMPTION = "NJ3";
-    private static final String CREDIT_NOTE_NA = "NA43";
+    private static final String CREDIT_NOTE_NA = "NA201000";
     private static final String REIMBURSEMENT = "NR18";
-    private static final String WORKING_ORIGINATING_ON = "NP43";
+    private static final String WORKING_ORIGINATING_ON = "ND200000";
     private static final String PAYMENT_ORIGINATING_ON = "ND190000";
     private static final String PAYMENT_ND_ORIGINATING_ON = "ND17";
 
@@ -631,45 +631,6 @@ public class SapExporter extends CustomTask {
         }
     }
 
-//    private void setSSLConnection(BindingProvider bp) {
-//        WebServiceClientConfiguration webServiceClientConfiguration = getWebServiceClientConfiguration();
-//        try {
-//            SSLContext sslContext = SSLContext.getInstance(getSSLVersion());
-//            KeyStoreWorker helper = webServiceClientConfiguration.getDomainKeyStore().getHelper();
-//            KeyManagerFactory kmf =
-//                    helper.getKeyManagerFactoryNeededForSSL(webServiceClientConfiguration.getAliasForSSLCertificate());
-//            TrustManagerFactory tmf = helper.getTrustManagerFactoryNeededForSSL();
-//            sslContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
-//
-//            bp.getRequestContext().put(JAXWSProperties.SSL_SOCKET_FACTORY, sslContext.getSocketFactory());
-//        } catch (Exception e) {
-//            throw new RuntimeException("Problems creating sslContext", e);
-//        }
-//    }
-//
-//    protected String getSSLVersion() {
-//        return "TLSv1.2";
-//    }
-
-//    private String exportFinantialDocumentToXML(final FinantialInstitution finantialInstitution,
-//            List<FinantialDocument> documents, final UnaryOperator<AuditFile> preProcessFunctionBeforeSerialize) {
-//
-//        if (documents.isEmpty()) {
-//            //throw new TreasuryDomainException("error.ERPExporter.no.document.to.export");
-//        }
-//
-//        checkForUnsetDocumentSeriesNumberInDocumentsToExport(documents);
-//
-//        documents = processCreditNoteSettlementsInclusion(documents);
-//
-//        DateTime beginDate =
-//                documents.stream().min((x, y) -> x.getDocumentDate().compareTo(y.getDocumentDate())).get().getDocumentDate();
-//        DateTime endDate =
-//                documents.stream().max((x, y) -> x.getDocumentDate().compareTo(y.getDocumentDate())).get().getDocumentDate();
-//        return generateERPFile(finantialInstitution, beginDate, endDate, documents, false, false,
-//                preProcessFunctionBeforeSerialize);
-//    }
-
     private WorkDocument convertToSAFTWorkDocument(final Event document, BigDecimal amount, final boolean debtRegistration,
             final boolean debtExemption, final boolean debt, final boolean payment, final boolean creditNote,
             final boolean reimbursement, final boolean isAdvancedPayment, Person payer) throws Exception {
@@ -1089,129 +1050,6 @@ public class SapExporter extends CustomTask {
     private Line convertToSAFTWorkDocumentLine(Event event, Map<String, Product> baseProducts) {
         Product currentProduct = null;
 
-//        FenixProduct product = event.getProduct();
-//
-//        if (product.getCode() != null && baseProducts.containsKey(product.getCode())) {
-//            currentProduct = baseProducts.get(product.getCode());
-//        } else {
-//            currentProduct = convertProductToSAFTProduct(product);
-//            baseProducts.put(currentProduct.getProductCode(), currentProduct);
-//        }
-//
-//        XMLGregorianCalendar documentDateCalendar = null;
-//        try {
-//            DatatypeFactory dataTypeFactory = DatatypeFactory.newInstance();
-//            DateTime documentDate = event.getFinantialDocument().getDocumentDate();
-//
-//            /* ANIL: 2015/10/20 converted from dateTime to Date */
-//            documentDateCalendar = convertToXMLDate(dataTypeFactory, documentDate);
-//
-//        } catch (DatatypeConfigurationException e) {
-//            e.printStackTrace();
-//        }
-//
-//        Line line = new Line();
-//
-//        // Consider in replacing amount with net amount (check SAFT)
-//        if (entry.isCreditNoteEntry()) {
-//            line.setCreditAmount(event.getNetAmount().setScale(2, RoundingMode.HALF_EVEN));
-//        } else if (entry.isDebitNoteEntry()) {
-//            line.setDebitAmount(event.getNetAmount().setScale(2, RoundingMode.HALF_EVEN));
-//        }
-//
-//        // If document was exported in legacy ERP than the amount is open amount when integration started
-////        if (entry.getFinantialDocument().isExportedInLegacyERP()) {
-////            if (entry.isCreditNoteEntry()) {
-////                line.setCreditAmount(
-////                        SAPExporterUtils.openAmountAtDate(entry, ERP_INTEGRATION_START_DATE).setScale(2, RoundingMode.HALF_EVEN));
-////            } else if (entry.isDebitNoteEntry()) {
-////                line.setDebitAmount(
-////                        SAPExporterUtils.openAmountAtDate(entry, ERP_INTEGRATION_START_DATE).setScale(2, RoundingMode.HALF_EVEN));
-////            }
-////        }
-//
-//        // Description
-//        line.setDescription(entry.getDescription());
-//        List<OrderReferences> orderReferences = line.getOrderReferences();
-//
-//        //Add the references on the document creditEntries <-> debitEntries
-//        if (entry.isCreditNoteEntry()) {
-//            CreditEntry creditEntry = (CreditEntry) entry;
-//            if (creditEntry.getDebitEntry() != null) {
-//                //Metadata
-//                Metadata metadata = new Metadata();
-//                metadata.setDescription(creditEntry.getDebitEntry().getERPIntegrationMetadata());
-//                line.setMetadata(metadata);
-//
-//                OrderReferences reference = new OrderReferences();
-//
-//                reference.setOriginatingON(creditEntry.getDebitEntry().getFinantialDocument().getUiDocumentNumber());
-//                reference.setOrderDate(documentDateCalendar);
-//
-//                if (((DebitNote) creditEntry.getDebitEntry().getFinantialDocument()).isExportedInLegacyERP()) {
-//                    final DebitNote debitNote = (DebitNote) creditEntry.getDebitEntry().getFinantialDocument();
-//                    if (!Strings.isNullOrEmpty(debitNote.getLegacyERPCertificateDocumentReference())) {
-//                        reference.setOriginatingON(debitNote.getLegacyERPCertificateDocumentReference());
-//                    } else {
-//                        reference.setOriginatingON("");
-//                    }
-//                }
-//
-//                reference.setLineNumber(BigInteger.ONE);
-//
-//                orderReferences.add(reference);
-//            }
-//
-//        } else if (entry.isDebitNoteEntry()) {
-//            DebitEntry debitEntry = (DebitEntry) entry;
-//
-//            Metadata metadata = new Metadata();
-//            metadata.setDescription(debitEntry.getERPIntegrationMetadata());
-//            line.setMetadata(metadata);
-//        }
-//
-//        // ProductCode
-//        line.setProductCode(currentProduct.getProductCode());
-//        // ProductDescription
-//        line.setProductDescription(currentProduct.getProductDescription());
-//        // Quantity
-//        line.setQuantity(BigDecimal.ONE);
-//        // SettlementAmount
-//        line.setSettlementAmount(BigDecimal.ZERO);
-//        // Tax
-//        line.setTax(getSAFTWorkingDocumentsTax(product, entry));
-//        line.setTaxPointDate(documentDateCalendar);
-//
-//        // TaxExemptionReason
-//        /*
-//         * Motivo da isen??o de imposto (TaxExemptionReason). Campo de
-//         * preenchimento obrigat?rio, quando os campos percentagem da taxa de
-//         * imposto (TaxPercentage) ou montante do imposto (TaxAmount) s?o iguais
-//         * a zero. Deve ser referido o preceito legal aplic?vel. . . . . . . . .
-//         * . Texto 60
-//         */
-////        if (Constants.isEqual(line.getTax().getTaxPercentage(), BigDecimal.ZERO)
-////                || (line.getTax().getTaxAmount() != null && Constants.isEqual(line.getTax().getTaxAmount(), BigDecimal.ZERO))) {
-////            if (product.getVatExemptionReason() != null) {
-////                line.setTaxExemptionReason(
-////                        product.getVatExemptionReason().getCode() + "-" + product.getVatExemptionReason().getName().getContent());
-////            } else {
-////                // HACK : DEFAULT
-////                line.setTaxExemptionReason(Constants.bundle("warning.ERPExporter.vat.exemption.unknown"));
-////            }
-////        }
-//        // UnitOfMeasure
-//        line.setUnitOfMeasure(product.getUnitOfMeasure().getContent());
-//        // UnitPrice
-//        line.setUnitPrice(entry.getAmount().setScale(2, RoundingMode.HALF_EVEN));
-//
-////        if (entry.getFinantialDocument().isExportedInLegacyERP()) {
-////            line.setUnitPrice(
-////                    Constants.divide(SAPExporterUtils.openAmountAtDate(entry, ERP_INTEGRATION_START_DATE), entry.getQuantity())
-////                            .setScale(2, RoundingMode.HALF_EVEN));
-////        }
-//
-//        return line;
         return null;
     }
 

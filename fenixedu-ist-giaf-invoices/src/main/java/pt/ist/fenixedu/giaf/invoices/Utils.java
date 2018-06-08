@@ -36,7 +36,6 @@ import org.fenixedu.academic.domain.StudentCurricularPlan;
 import org.fenixedu.academic.domain.accounting.AccountingTransaction;
 import org.fenixedu.academic.domain.accounting.AccountingTransactionDetail;
 import org.fenixedu.academic.domain.accounting.Event;
-import org.fenixedu.academic.domain.accounting.PostingRule;
 import org.fenixedu.academic.domain.accounting.accountingTransactions.detail.SibsTransactionDetail;
 import org.fenixedu.academic.domain.accounting.events.AdministrativeOfficeFeeAndInsuranceEvent;
 import org.fenixedu.academic.domain.accounting.events.AnnualEvent;
@@ -57,7 +56,6 @@ import org.fenixedu.academic.domain.phd.debts.PhdGratuityEvent;
 import org.fenixedu.academic.domain.student.Registration;
 import org.fenixedu.academic.domain.student.Student;
 import org.fenixedu.academic.util.Money;
-import org.fenixedu.bennu.GiafInvoiceConfiguration;
 import org.fenixedu.bennu.core.domain.User;
 import org.fenixedu.bennu.core.domain.UserProfile;
 import org.fenixedu.commons.StringNormalizer;
@@ -180,7 +178,7 @@ public class Utils {
             return false;
         }
 
-        final BigDecimal amount = Utils.calculateTotalDebtValue(event).getAmount();
+        final BigDecimal amount = event.getOriginalAmountToPay().getAmount();
         //final BigDecimal amount = event.getOriginalAmountToPay().getAmount();
         if (amount.signum() <= 0) {
             if (event.isCancelled()) {
@@ -192,19 +190,6 @@ public class Utils {
             }
         }
         return true;
-    }
-
-    private static boolean hasAnyGiafEntry(final Event event) {
-        final String id = event.getExternalId();
-        final String dirPath = GiafInvoiceConfiguration.getConfiguration().giafInvoiceDir() + splitPath(id) + File.separator + id;
-        final File dir = new File(dirPath);
-        if (dir.exists()) {
-            final File file = new File(dir, event.getExternalId() + ".json");
-            if (file.exists()) {
-                return true;
-            }
-        }
-        return false;
     }
 
     public static String splitPath(final String id) {
@@ -258,7 +243,7 @@ public class Utils {
         DebtCycleType cycleType;
         
         try {
-            amount = Utils.calculateTotalDebtValue(e).getAmount();
+            amount = e.getOriginalAmountToPay().getAmount();
             cycleType = cycleType(e);
         } catch (Throwable t) {
             amount = null;
@@ -302,12 +287,6 @@ public class Utils {
         return displayName == null ? person.getName() : displayName;
     }
 
-    public static Money calculateTotalDebtValue(final Event event) {
-        final DateTime when = event.getWhenOccured().plusSeconds(1);
-        final PostingRule rule = event.getPostingRule();
-        return call(rule, event, when, false);
-    }
-
     private static boolean isValidPostCode(final String postalCode) {
         if (postalCode != null) {
             final String v = postalCode.trim();
@@ -315,10 +294,6 @@ public class Utils {
                     && CharMatcher.DIGIT.matchesAllOf(v.substring(5));
         }
         return false;
-    }
-
-    private static Money call(final PostingRule rule, final Event event, final DateTime when, final boolean applyDiscount) {
-        return rule.doCalculationForAmountToPayWithoutExemptions(event, when, applyDiscount);
     }
 
     public static ExecutionYear executionYearOf(final Event event) {
