@@ -73,10 +73,12 @@ public class SapEvent {
         public final String paymentId;
         public Money debt = Money.ZERO;
         public Money invoice = Money.ZERO;
+        public Money invoice_interest = Money.ZERO;
         public Money credit = Money.ZERO;
         public Money reimbursement = Money.ZERO;
         public Money advancement = Money.ZERO;
         public Money payed = Money.ZERO;
+        public Money payed_interest = Money.ZERO;
         public Money fines = Money.ZERO;
 
         private SapEventEntry(final String clientId, final String documentNumber, final String sapDocumentNumber,
@@ -115,6 +117,9 @@ public class SapEvent {
             case INVOICE:
                 entry.invoice = value;
                 break;
+            case INVOICE_INTEREST:
+                entry.invoice_interest = value;
+                break;
             case DEBT:
                 entry.debt = value;
                 break;
@@ -130,6 +135,9 @@ public class SapEvent {
                 break;
             case PAYMENT:
                 entry.payed = value;
+                break;
+            case PAYMENT_INTEREST:
+                entry.payed_interest = value;
                 break;
             default:
                 //TODO it's a fine
