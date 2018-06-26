@@ -153,6 +153,7 @@ public class InitializeSapData extends CustomTask {
 //                    amountToRegister = originalAmount.subtract(amountPayed);
                 }
             }
+
             exemptions = exemptions.add(amountToRegister);
 
             String clientId = null;
