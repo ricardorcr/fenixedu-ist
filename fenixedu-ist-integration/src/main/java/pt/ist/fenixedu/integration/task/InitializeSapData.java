@@ -70,8 +70,7 @@ public class InitializeSapData extends CustomTask {
 
     private Money processPayments(Event event, DebtInterestCalculator debtInterestCalculator) {
 
-        Money paidAmount =
-                new Money(debtInterestCalculator.getPaidDebtAmount().add(debtInterestCalculator.getPaidInterestAmount()));
+        Money paidAmount = new Money(debtInterestCalculator.getPaidDebtAmount());
 
         String clientId = null;
         if (event.getParty().isPerson()) {
@@ -86,23 +85,20 @@ public class InitializeSapData extends CustomTask {
             payments = payments.add(paidAmount);
 
             SapRequest sapInvoiceRequest =
-                    new SapRequest(event, clientId, paidAmount, "ND0", SapRequestType.INVOICE, Money.ZERO,
-                            new JsonObject());
+                    new SapRequest(event, clientId, paidAmount, "ND0", SapRequestType.INVOICE, Money.ZERO, new JsonObject());
             sapInvoiceRequest.setWhenSent(FIRST_DAY);
             sapInvoiceRequest.setSent(true);
 //            persistLocalChange(clientId, "ND0", "", "invoice", amountToRegister, REGISTER_DATE, "", Money.ZERO, sapFile, jArray);
             if (event.isGratuity()) {
                 SapRequest sapDebtRequest =
-                        new SapRequest(event, clientId, paidAmount, "NG0", SapRequestType.DEBT, Money.ZERO,
-                                new JsonObject());
+                        new SapRequest(event, clientId, paidAmount, "NG0", SapRequestType.DEBT, Money.ZERO, new JsonObject());
                 sapDebtRequest.setWhenSent(FIRST_DAY);
                 sapDebtRequest.setSent(true);
 //                persistLocalChange(clientId, "NG0", "", "debt", amountToRegister, REGISTER_DATE, "", Money.ZERO, sapFile, jArray);
             }
 
             SapRequest sapPaymentRequest =
-                    new SapRequest(event, clientId, paidAmount, "NP0", SapRequestType.PAYMENT, Money.ZERO,
-                            new JsonObject());
+                    new SapRequest(event, clientId, paidAmount, "NP0", SapRequestType.PAYMENT, Money.ZERO, new JsonObject());
             sapPaymentRequest.setWhenSent(FIRST_DAY);
             sapPaymentRequest.setSent(true);
 
@@ -111,17 +107,18 @@ public class InitializeSapData extends CustomTask {
 //            return isPartialRegime(event) ? paidDebtAmount : Money.ZERO;
         }
 
-        Money fineAmount = new Money(debtInterestCalculator.getPaidInterestAmount());
-        if (fineAmount.isPositive()) {
-            payments = payments.add(fineAmount);
+        Money interestAndfineAmount =
+                new Money(debtInterestCalculator.getPaidInterestAmount().add(debtInterestCalculator.getPaidInterestAmount()));
+        if (interestAndfineAmount.isPositive()) {
+            payments = payments.add(interestAndfineAmount);
 
-            SapRequest sapInvoiceRequest = new SapRequest(event, clientId, fineAmount, "ND0",
+            SapRequest sapInvoiceRequest = new SapRequest(event, clientId, interestAndfineAmount, "ND0",
                     SapRequestType.INVOICE_INTEREST, Money.ZERO, new JsonObject());
             sapInvoiceRequest.setWhenSent(FIRST_DAY);
             sapInvoiceRequest.setSent(true);
 //            persistLocalChange(clientId, "ND0", "", "invoice", amountToRegister, REGISTER_DATE, "", Money.ZERO, sapFile, jArray);
 
-            SapRequest sapPaymentRequest = new SapRequest(event, clientId, fineAmount, "NP0",
+            SapRequest sapPaymentRequest = new SapRequest(event, clientId, interestAndfineAmount, "NP0",
                     SapRequestType.PAYMENT_INTEREST, Money.ZERO, new JsonObject());
             sapPaymentRequest.setWhenSent(FIRST_DAY);
             sapPaymentRequest.setSent(true);
@@ -139,8 +136,9 @@ public class InitializeSapData extends CustomTask {
     }
 
     private void processExemptions(Event event, Money amountPayed, DebtInterestCalculator debtInterestCalculator) {
-        
-        Money amountToRegister = new Money(debtInterestCalculator.getDebtExemptionAmount());
+
+        Money amountToRegister = new Money(debtInterestCalculator.getDebtExemptionAmount()
+                .add(debtInterestCalculator.getInterestExemptionAmount()).add(debtInterestCalculator.getFineExemptionAmount()));
         if (amountToRegister.isPositive()) {
             //TODO remove when fully tested, if we register a different value for the exemption
             //when the sync script runs it will detect a different amount for the exemptions and it will try to rectify
@@ -166,22 +164,26 @@ public class InitializeSapData extends CustomTask {
                 return;
             }
 
+            //an exemption should be considered as a payment for the initialization
+            SapRequest sapInvoiceRequest = new SapRequest(event, clientId, amountToRegister, "ND0", SapRequestType.INVOICE,
+                    Money.ZERO, new JsonObject());
+            sapInvoiceRequest.setWhenSent(FIRST_DAY);
+            sapInvoiceRequest.setSent(true);
+
             SapRequest sapCreditRequest =
                     new SapRequest(event, clientId, amountToRegister, "NA0", SapRequestType.CREDIT, Money.ZERO, new JsonObject());
             sapCreditRequest.setWhenSent(FIRST_DAY);
             sapCreditRequest.setSent(true);
 //            persistLocalChange(clientId, "NA0", "", "credit", amountToRegister, REGISTER_DATE, "", Money.ZERO, sapFile, jArray);
             if (event.isGratuity()) {
-                SapRequest sapDebtRequest =
-                        new SapRequest(event, clientId, amountToRegister, "NG0", SapRequestType.DEBT, Money.ZERO,
-                                new JsonObject());
+                SapRequest sapDebtRequest = new SapRequest(event, clientId, amountToRegister, "NG0", SapRequestType.DEBT,
+                        Money.ZERO, new JsonObject());
                 sapDebtRequest.setWhenSent(FIRST_DAY);
                 sapDebtRequest.setSent(true);
 //                persistLocalChange(clientId, "NG0", "", "debt", amountToRegister, REGISTER_DATE, "", Money.ZERO, sapFile, jArray);
 
                 SapRequest sapDebtCreditRequest = new SapRequest(event, clientId, amountToRegister.negate(), "NJ0",
-                        SapRequestType.DEBT,
-                        Money.ZERO, new JsonObject());
+                        SapRequestType.DEBT, Money.ZERO, new JsonObject());
                 sapDebtCreditRequest.setWhenSent(FIRST_DAY);
                 sapDebtCreditRequest.setSent(true);
 //                persistLocalChange(clientId, "NJ0", "", "debt", amountToRegister.negate(), REGISTER_DATE, "", Money.ZERO, sapFile,
@@ -207,9 +209,8 @@ public class InitializeSapData extends CustomTask {
                 taskLog("Dívida de empresa!! - %s\n", clientId);
                 return;
             }
-            SapRequest sapRequest =
-                    new SapRequest(event, clientId, amountToRegister, "NR0", SapRequestType.REIMBURSEMENT, Money.ZERO,
-                            new JsonObject());
+            SapRequest sapRequest = new SapRequest(event, clientId, amountToRegister, "NR0", SapRequestType.REIMBURSEMENT,
+                    Money.ZERO, new JsonObject());
             sapRequest.setWhenSent(FIRST_DAY);
             sapRequest.setSent(true);
 //            persistLocalChange(clientId, "NR0", "", "reimbursement", amountToRegister, REGISTER_DATE, "", Money.ZERO, sapFile,
