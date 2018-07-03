@@ -110,6 +110,7 @@ public class InitializeSapData extends CustomTask {
 
 //            return isPartialRegime(event) ? paidDebtAmount : Money.ZERO;
         }
+
         Money fineAmount = new Money(debtInterestCalculator.getPaidInterestAmount());
         if (fineAmount.isPositive()) {
             payments = payments.add(fineAmount);
@@ -124,7 +125,6 @@ public class InitializeSapData extends CustomTask {
                     SapRequestType.PAYMENT_INTEREST, Money.ZERO, new JsonObject());
             sapPaymentRequest.setWhenSent(FIRST_DAY);
             sapPaymentRequest.setSent(true);
-
         }
         return Money.ZERO;
     }
@@ -154,6 +154,7 @@ public class InitializeSapData extends CustomTask {
 //                    amountToRegister = originalAmount.subtract(amountPayed);
                 }
             }
+
             exemptions = exemptions.add(amountToRegister);
 
             String clientId = null;
