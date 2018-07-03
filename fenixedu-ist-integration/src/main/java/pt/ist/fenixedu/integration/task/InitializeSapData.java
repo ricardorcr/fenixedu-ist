@@ -53,8 +53,8 @@ public class InitializeSapData extends CustomTask {
             try {
                 process(event);
             } catch (Exception e) {
-                taskLog("Erro no evento %s\n", event.getExternalId());
-                throw e;
+                taskLog("Erro no evento %s %s\n", event.getExternalId(), e.getMessage());
+                e.printStackTrace();
             }
         }
         taskLog("O valor dos pagamentos foi de %s\n", payments.toPlainString());

@@ -372,7 +372,7 @@ public class Utils {
     }
 
     public static String mapToArticleCode(final Event event, final String eventDescription) {
-        if (event.isGratuity()) {
+        if (event.isGratuity() && !(event instanceof PhdGratuityEvent)) {
             final GratuityEvent gratuityEvent = (GratuityEvent) event;
             final StudentCurricularPlan scp = gratuityEvent.getStudentCurricularPlan();
             final Degree degree = scp.getDegree();

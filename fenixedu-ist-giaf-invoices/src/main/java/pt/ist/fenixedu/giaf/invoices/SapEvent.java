@@ -21,10 +21,12 @@ import org.fenixedu.academic.domain.Degree;
 import org.fenixedu.academic.domain.ExecutionYear;
 import org.fenixedu.academic.domain.Person;
 import org.fenixedu.academic.domain.StudentCurricularPlan;
+import org.fenixedu.academic.domain.accounting.AccountingTransaction;
 import org.fenixedu.academic.domain.accounting.AccountingTransactionDetail;
 import org.fenixedu.academic.domain.accounting.Event;
 import org.fenixedu.academic.domain.accounting.PaymentMode;
 import org.fenixedu.academic.domain.accounting.accountingTransactions.detail.SibsTransactionDetail;
+import org.fenixedu.academic.domain.accounting.calculator.Payment;
 import org.fenixedu.academic.domain.accounting.events.AdministrativeOfficeFeeAndInsuranceEvent;
 import org.fenixedu.academic.domain.accounting.events.ImprovementOfApprovedEnrolmentEvent;
 import org.fenixedu.academic.domain.accounting.events.SpecialSeasonEnrolmentEvent;
@@ -48,8 +50,7 @@ import pt.ist.fenixedu.domain.SapDocumentFile;
 import pt.ist.fenixedu.domain.SapRequest;
 import pt.ist.fenixedu.domain.SapRequestType;
 import pt.ist.fenixedu.domain.SapRoot;
-import pt.ist.fenixframework.Atomic;
-import pt.ist.fenixframework.Atomic.TxMode;
+import pt.ist.fenixframework.FenixFramework;
 import pt.ist.sap.client.SapFinantialClient;
 
 public class SapEvent {
@@ -99,52 +100,56 @@ public class SapEvent {
 
     public SapEvent(final Event event) {
         this.event = event;
-        event.getSapRequestSet().stream().filter(sr -> sr.getSent()).forEach(sr -> {
-            final String clientId = sr.getClientId();
-
-            final String documentNumber = sr.getSapDocumentNumber();
-            final String sapDocumentNumber = sr.getSapDocumentNumber();
-            final String paymentId = sr.getPayment().getExternalId();
-
-            final SapRequestType type = sr.getRequestType();
-            final Money value = sr.getValue();
-            final Money advancement = sr.getAdvancement();
-
-            final SapEventEntry entry = new SapEventEntry(clientId, documentNumber, sapDocumentNumber, paymentId);
-            entries.add(entry);
-
-            switch (type) {
-            case INVOICE:
-                entry.invoice = value;
-                break;
-            case INVOICE_INTEREST:
-                entry.invoice_interest = value;
-                break;
-            case DEBT:
-                entry.debt = value;
-                break;
-            case CREDIT:
-                entry.credit = value;
-                break;
-            case REIMBURSEMENT:
-                entry.reimbursement = value;
-                break;
-            case ADVANCEMENT:
-                entry.payed = value;
-                entry.advancement = advancement;
-                break;
-            case PAYMENT:
-                entry.payed = value;
-                break;
-            case PAYMENT_INTEREST:
-                entry.payed_interest = value;
-                break;
-            default:
-                //TODO it's a fine
-                entry.fines = value;
-                break;
-            }
+        event.getSapRequestSet().stream().filter(sr -> sr.getIntegrated()).forEach(sr -> {
+            addSapEntry(sr);
         });
+    }
+
+    private void addSapEntry(SapRequest sr) {
+        final String clientId = sr.getClientId();
+
+        final String documentNumber = sr.getDocumentNumber();
+        final String sapDocumentNumber = sr.getSapDocumentNumber();
+        final String paymentId = sr.getPayment() != null ? sr.getPayment().getExternalId() : "";
+
+        final SapRequestType type = sr.getRequestType();
+        final Money value = sr.getValue();
+        final Money advancement = sr.getAdvancement();
+
+        final SapEventEntry entry = new SapEventEntry(clientId, documentNumber, sapDocumentNumber, paymentId);
+        entries.add(entry);
+
+        switch (type) {
+        case INVOICE:
+            entry.invoice = value;
+            break;
+        case INVOICE_INTEREST:
+            entry.invoice_interest = value;
+            break;
+        case DEBT:
+            entry.debt = value;
+            break;
+        case CREDIT:
+            entry.credit = value;
+            break;
+        case REIMBURSEMENT:
+            entry.reimbursement = value;
+            break;
+        case ADVANCEMENT:
+            entry.payed = value;
+            entry.advancement = advancement;
+            break;
+        case PAYMENT:
+            entry.payed = value;
+            break;
+        case PAYMENT_INTEREST:
+            entry.payed_interest = value;
+            break;
+        default:
+            //TODO it's a fine
+            entry.fines = value;
+            break;
+        }
     }
 
     public boolean registerInvoice(ClientMap clientMap, Money debtFenix, Event event, boolean isGratuity, boolean isNewDate,
@@ -182,12 +187,16 @@ public class SapEvent {
                 }
 
                 sapRequest.setSapDocumentNumber(sapDocumentNumber);
+                sapRequest.setIntegrated(true);
+                addSapEntry(sapRequest);
 
                 // if there are amounts in advancement we need to register them in the new invoice
                 Money advancementAmount = getAdvancementAmount();
                 if (advancementAmount.isPositive()) {
                     return registerPaymentFromAdvancement(event, clientId, advancementAmount, sapRequest, errorLog, elogger);
                 }
+            } else {
+                return false;
             }
         } else {
             logError(event, errorLog, elogger, result.get("exception").getAsString(), documentNumber, "invoice");
@@ -226,6 +235,10 @@ public class SapEvent {
                     sapRequest.setSapDocumentFile(new SapDocumentFile(sanitize(sapDocumentNumber) + ".pdf",
                             Base64.getDecoder().decode(docResult.get("documentBase64").getAsString())));
                 }
+                sapRequest.setIntegrated(true);
+                addSapEntry(sapRequest);
+            } else {
+                return false;
             }
         } else {
             logError(event, errorLog, elogger, result.get("exception").getAsString(), documentNumber, "paymentFromAdvancement");
@@ -251,6 +264,8 @@ public class SapEvent {
             if (docIsIntregrated) {
                 String sapDocumentNumber = getSapDocumentNumber(result, documentNumber);
                 sapRequest.setSapDocumentNumber(sapDocumentNumber);
+                sapRequest.setIntegrated(true);
+                addSapEntry(sapRequest);
                 return true;
             } else {
                 return false;
@@ -331,6 +346,8 @@ public class SapEvent {
             if (docIsIntregrated) {
                 String sapDocumentNumber = getSapDocumentNumber(result, documentNumber);
                 sapRequest.setSapDocumentNumber(sapDocumentNumber);
+                sapRequest.setIntegrated(true);
+                addSapEntry(sapRequest);
                 return true;
             } else {
                 return false;
@@ -428,6 +445,8 @@ public class SapEvent {
                 }
 
                 sapRequest.setSapDocumentNumber(sapDocumentNumber);
+                sapRequest.setIntegrated(true);
+                addSapEntry(sapRequest);
                 return true;
             } else {
                 return false;
@@ -466,6 +485,10 @@ public class SapEvent {
                 }
 
                 sapRequest.setSapDocumentNumber(sapDocumentNumber);
+                sapRequest.setIntegrated(true);
+                addSapEntry(sapRequest);
+            } else {
+                return false;
             }
         } else {
             logError(event, errorLog, elogger, result.get("exception").getAsString(), documentNumber, "reimbursement");
@@ -474,23 +497,25 @@ public class SapEvent {
         return true;
     }
 
-    public boolean registerPayment(ClientMap clientMap, AccountingTransactionDetail transactionDetail, ErrorLogConsumer errorLog,
-            EventLogger elogger) throws Exception {
+    public boolean registerPayment(ClientMap clientMap, Payment payment, ErrorLogConsumer errorLog, EventLogger elogger)
+            throws Exception {
 
+        AccountingTransactionDetail transactionDetail =
+                ((AccountingTransaction) FenixFramework.getDomainObject(payment.getId())).getTransactionDetail();
         String clientId = clientMap.getClientId(transactionDetail.getEvent().getPerson());
 
         // ir buscar a ultima factura aberta e verificar se o pagamento ultrapassa o valor da factura
         // e associar o restante à(s) factura(s) seguinte(s)
         SimpleImmutableEntry<List<SapEventEntry>, Money> openInvoicesAndRemainingAmount = getOpenInvoicesAndRemainingValue();
 
-        Money payedAmount = transactionDetail.getTransaction().getAmountWithAdjustment();
+        Money payedAmount = new Money(payment.getAmount());
         Money firstRemainingAmount = openInvoicesAndRemainingAmount.getValue();
         List<SapEventEntry> openInvoices = openInvoicesAndRemainingAmount.getKey();
 
         if (firstRemainingAmount.isZero()) {
             // não há facturas abertas, fazer adiantamento, sobre a última factura!!
-            return registerAdvancement(Money.ZERO, payedAmount, getLastInvoiceNumber(), clientId, transactionDetail, null,
-                    errorLog, elogger);
+            return registerAdvancement(Money.ZERO, payedAmount, getLastInvoiceNumber(), clientId, transactionDetail, errorLog,
+                    elogger);
         }
 
         if (firstRemainingAmount.lessThan(payedAmount)) {
@@ -501,29 +526,29 @@ public class SapEvent {
                 // só há uma factura aberta -> fazer adiantamento
                 String invoiceNumber = openInvoices.get(0).documentNumber;
                 return registerAdvancement(firstRemainingAmount, payedAmount.subtract(firstRemainingAmount), invoiceNumber,
-                        clientId, transactionDetail, null, errorLog, elogger);
+                        clientId, transactionDetail, errorLog, elogger);
             } else {
                 // vai distribuir o pagamento pelas restantes facturas abertas
-                return registerPaymentList(openInvoices, payedAmount, firstRemainingAmount, clientId, transactionDetail, null,
-                        errorLog, elogger);
+                return registerPaymentList(openInvoices, payedAmount, firstRemainingAmount, clientId, transactionDetail, errorLog,
+                        elogger);
             }
         } else {
             // tudo ok, é só registar o pagamento
-            return registerPayment(transactionDetail, null, payedAmount, openInvoices.get(0), clientId, errorLog, elogger);
+            return registerPayment(transactionDetail, payedAmount, openInvoices.get(0), clientId, errorLog, elogger);
         }
     }
 
     private boolean registerPaymentList(List<SapEventEntry> openInvoices, Money amountToRegister, Money remainingAmount,
-            String clientId, AccountingTransactionDetail transactionDetail, File dir, ErrorLogConsumer errorLog,
-            EventLogger elogger) throws Exception {
+            String clientId, AccountingTransactionDetail transactionDetail, ErrorLogConsumer errorLog, EventLogger elogger)
+            throws Exception {
         if (amountToRegister.greaterThan(remainingAmount)) {
             if (openInvoices.size() > 1) {
-                boolean successful = registerPayment(transactionDetail, dir, remainingAmount, openInvoices.get(0), clientId,
-                        errorLog, elogger);
+                boolean successful =
+                        registerPayment(transactionDetail, remainingAmount, openInvoices.get(0), clientId, errorLog, elogger);
                 if (successful) {
                     return registerPaymentList(openInvoices.subList(1, openInvoices.size()),
                             amountToRegister.subtract(remainingAmount), openInvoices.get(1).invoice, clientId, transactionDetail,
-                            dir, errorLog, elogger);
+                            errorLog, elogger);
                 } else {
                     return false;
                 }
@@ -533,19 +558,19 @@ public class SapEvent {
                 // registar adiantamento
                 String invoiceNumber = openInvoices.get(0).documentNumber;
                 return registerAdvancement(remainingAmount, amountToRegister.subtract(remainingAmount), invoiceNumber, clientId,
-                        transactionDetail, dir, errorLog, elogger);
+                        transactionDetail, errorLog, elogger);
             }
         } else {
-            return registerPayment(transactionDetail, dir, amountToRegister, openInvoices.get(0), clientId, errorLog, elogger);
+            return registerPayment(transactionDetail, amountToRegister, openInvoices.get(0), clientId, errorLog, elogger);
         }
     }
 
-    private boolean registerPayment(AccountingTransactionDetail transactionDetail, final File dir, Money payedAmount,
-            SapEventEntry sapEntry, String clientId, ErrorLogConsumer errorLog, EventLogger elogger) throws Exception {
+    private boolean registerPayment(AccountingTransactionDetail transactionDetail, Money payedAmount, SapEventEntry sapEntry,
+            String clientId, ErrorLogConsumer errorLog, EventLogger elogger) throws Exception {
 
         checkValidDocumentNumber(sapEntry.documentNumber, transactionDetail.getEvent());
 
-        JsonObject data = toJsonPayment(transactionDetail, sapEntry, clientId);
+        JsonObject data = toJsonPayment(transactionDetail, payedAmount, sapEntry, clientId);
         String documentNumber = getDocumentNumber(data, true);
         SapRequest sapRequest = new SapRequest(transactionDetail.getEvent(), clientId, payedAmount, documentNumber,
                 SapRequestType.PAYMENT, Money.ZERO, data);
@@ -570,7 +595,7 @@ public class SapEvent {
 
                 sapRequest.setSapDocumentNumber(sapDocumentNumber);
             } else {
-                if (hasPayment(transactionDetail)) {
+                if (hasPayment(transactionDetail.getExternalId())) {
                     //TODO já existe um pagamento feito com este id o que quer dizer que isto é um pagamento que se dividiu por n facturas e um deles deu erro
                     // este pagamento não vai voltar a ser processado e é preciso dar uma mensagem de erro diferente para isto ser corrigido manualmente
                     logError(transactionDetail.getEvent(), errorLog, elogger, "WARNING: one of multiple payments has failed!!!",
@@ -583,18 +608,18 @@ public class SapEvent {
                     "payment");
             successful = false;
         }
+        sapRequest.setIntegrated(successful);
         return successful;
     }
 
     private boolean registerAdvancement(Money amount, Money advancement, String invoiceNumber, String clientId,
-            AccountingTransactionDetail transactionDetail, File dir, ErrorLogConsumer errorLog, EventLogger elogger)
-            throws Exception {
-        checkValidDocumentNumber(invoiceNumber, transactionDetail.getEvent());
+            AccountingTransactionDetail transactionDetail, ErrorLogConsumer errorLog, EventLogger elogger) throws Exception {
+        checkValidDocumentNumber(invoiceNumber, event);
 
         JsonObject data = toJsonAdvancement(amount, advancement, invoiceNumber, clientId, transactionDetail);
         String documentNumber = getDocumentNumber(data, true);
-        SapRequest sapRequest = new SapRequest(transactionDetail.getEvent(), clientId, amount, documentNumber,
-                SapRequestType.ADVANCEMENT, advancement, data);
+        SapRequest sapRequest =
+                new SapRequest(event, clientId, amount, documentNumber, SapRequestType.ADVANCEMENT, advancement, data);
         JsonObject result = sendDataToSap(sapRequest, data);
 
         if (result.get("exception") == null) {
@@ -612,6 +637,10 @@ public class SapEvent {
                 }
 
                 sapRequest.setSapDocumentNumber(sapDocumentNumber);
+                sapRequest.setIntegrated(true);
+                addSapEntry(sapRequest);
+            } else {
+                return false;
             }
         } else {
             logError(transactionDetail.getEvent(), errorLog, elogger, result.get("exception").getAsString(), documentNumber,
@@ -625,10 +654,10 @@ public class SapEvent {
         Set<SapRequest> requests = new TreeSet<>(Comparator.comparing(SapRequest::getWhenCreated));
         requests.addAll(event.getSapRequestSet());
         for (SapRequest sr : requests) {
-            if (!sr.getSent()) {
+            if (!sr.getIntegrated()) {
                 JsonParser jsonParser = new JsonParser();
                 JsonObject data = (JsonObject) jsonParser.parse(sr.getRequest());
-                JsonObject result = sendDataToSap(null, data);
+                JsonObject result = sendDataToSap(sr, data);
                 if (result.get("exception") == null) {
                     boolean docIsIntregrated =
                             checkDocumentsStatus(result, event, errorLog, elogger, sr.getRequestType().toString());
@@ -642,6 +671,8 @@ public class SapEvent {
                             sr.setSapDocumentFile(new SapDocumentFile(sanitize(sapDocumentNumber) + ".pdf",
                                     Base64.getDecoder().decode(docResult.get("documentBase64").getAsString())));
                         }
+                        sr.setIntegrated(true);
+                        addSapEntry(sr);
                     } else {
                         return false;
                     }
@@ -689,12 +720,12 @@ public class SapEvent {
         return null;
     }
 
-    private JsonObject toJsonPayment(AccountingTransactionDetail transactionDetail, SapEventEntry sapEntry, String clientId)
-            throws Exception {
+    private JsonObject toJsonPayment(AccountingTransactionDetail transactionDetail, Money amount, SapEventEntry sapEntry,
+            String clientId) throws Exception {
         JsonObject data = toJson(transactionDetail.getEvent(), clientId, transactionDetail.getWhenRegistered(), false, false);
-        JsonObject paymentDocument = toJsonPaymentDocument(transactionDetail.getTransaction().getAmountWithAdjustment(), "NP",
-                sapEntry.documentNumber, new DateTime(), getPaymentMechanism(transactionDetail),
-                getPaymentMethodReference(transactionDetail), SAFTPTSettlementType.NL.toString(), true);
+        JsonObject paymentDocument = toJsonPaymentDocument(amount, "NP", sapEntry.documentNumber, new DateTime(),
+                getPaymentMechanism(transactionDetail), getPaymentMethodReference(transactionDetail),
+                SAFTPTSettlementType.NL.toString(), true);
 
         data.add("paymentDocument", paymentDocument);
         return data;
@@ -928,20 +959,7 @@ public class SapEvent {
     }
 
     private Long getDocumentNumber() throws Exception {
-        final List<Long> docNumber = new ArrayList<>();
-
-        Thread thread = new Thread() {
-            @Override
-            @Atomic(mode = TxMode.WRITE)
-            public void run() {
-                docNumber.add(SapRoot.getInstance().getAndSetNextDocumentNumber());
-            }
-        };
-
-        thread.start();
-        thread.join();
-
-        return docNumber.get(0);
+        return SapRoot.getInstance().getAndSetNextDocumentNumber();
     }
 
     private String getPaymentMethodReference(AccountingTransactionDetail transactionDetail) {
@@ -1097,8 +1115,8 @@ public class SapEvent {
         return addAll(SapRequestType.REIMBURSEMENT);
     }
 
-    public boolean hasPayment(final AccountingTransactionDetail transactionDetail) {
-        return entries.stream().filter(e -> e.paymentId.equals(transactionDetail.getExternalId())).findAny().isPresent();
+    public boolean hasPayment(final String transactionDetailId) {
+        return entries.stream().filter(e -> e.paymentId.equals(transactionDetailId)).findAny().isPresent();
     }
 
     private void persistLocalChange(final String clientId, final String documentNumber, final String sapDocumentNumber,
@@ -1185,7 +1203,7 @@ public class SapEvent {
     }
 
     private SimpleImmutableEntry<String, String> mapToProduct(Event event, String eventDescription, boolean isDebtRegistration) {
-        if (event.isGratuity()) {
+        if (event.isGratuity() && !(event instanceof PhdGratuityEvent)) {
             final GratuityEvent gratuityEvent = (GratuityEvent) event;
             final StudentCurricularPlan scp = gratuityEvent.getStudentCurricularPlan();
             final Degree degree = scp.getDegree();

@@ -15,13 +15,16 @@ import org.fenixedu.academic.domain.accounting.Event;
 import org.fenixedu.academic.domain.phd.debts.PhdGratuityEvent;
 import org.fenixedu.academic.util.Money;
 import org.joda.time.DateTime;
+import org.joda.time.LocalDate;
+
+import pt.ist.fenixframework.FenixFramework;
 
 public class EventWrapper {
 
     public final static DateTime THRESHOLD = new DateTime(2015, 12, 1, 0, 0, 0, 0);
     public final static ExecutionYear SAP_THRESHOLD = ExecutionYear.readExecutionYearByName("2015/2016");
     public final static ExecutionYear SAP_3RD_CYCLE_THRESHOLD = ExecutionYear.readExecutionYearByName("2014/2015");
-    public final static DateTime SAP_TRANSACTIONS_THRESHOLD = new DateTime(2017, 12, 31, 23, 59, 59, 99);
+    public final static LocalDate SAP_TRANSACTIONS_THRESHOLD = new LocalDate(2017, 12, 31);
 
     public final static DateTime LIMIT = new DateTime(2017, 12, 31, 23, 59, 59, 999);
 
@@ -61,10 +64,9 @@ public class EventWrapper {
     public static Stream<Event> eventsToProcessSap(final ErrorLogConsumer consumer, final Stream<Event> eventStream,
             final Stream<AccountingTransactionDetail> txStream) {
         final Stream<Event> currentEvents =
-                /*        Stream.of(FenixFramework.getDomainObject("1688875630069924"));
-                /*, FenixFramework.getDomainObject("1974082933358646"),
-                FenixFramework.getDomainObject("1973339904016761"), FenixFramework.getDomainObject("1973339904016733"));*/
-                eventStream.filter(EventWrapper::needsProcessingSap).filter(e -> Utils.validate(consumer, e));
+                Stream.of(FenixFramework.getDomainObject("1976290546548756"), FenixFramework.getDomainObject("1976290546548755"),
+                        FenixFramework.getDomainObject("1975341358777277"));
+//                eventStream.filter(EventWrapper::needsProcessingSap).filter(e -> Utils.validate(consumer, e));
 
         final int currentYear = Year.now().getValue();
         final Stream<Event> pastEvents = txStream.filter(d -> d.getWhenRegistered().getYear() == currentYear)
@@ -153,13 +155,13 @@ public class EventWrapper {
                 .filter(d -> d.getWhenRegistered().isAfter(THRESHOLD)).filter(d -> !isCreditNote(d))
                 .filter(d -> Utils.validate(null, d));
     }
-
-    public List<AccountingTransactionDetail> paymentsSap() {
-        final Stream<AccountingTransactionDetail> stream =
-                event.getAccountingTransactionsSet().stream().map(at -> at.getTransactionDetail());
-        return stream.filter(d -> d.getWhenRegistered().isAfter(SAP_TRANSACTIONS_THRESHOLD)).filter(d -> !isCreditNote(d))
-                .filter(d -> Utils.validate(null, d)).collect(Collectors.toList());
-    }
+//
+//    public List<AccountingTransactionDetail> paymentsSap() {
+//        final Stream<AccountingTransactionDetail> stream =
+//                event.getAccountingTransactionsSet().stream().map(at -> at.getTransactionDetail());
+//        return stream.filter(d -> d.getWhenRegistered().isAfter(SAP_TRANSACTIONS_THRESHOLD)).filter(d -> !isCreditNote(d))
+//                .filter(d -> Utils.validate(null, d)).collect(Collectors.toList());
+//    }
 
     private boolean isCreditNote(AccountingTransactionDetail detail) {
         final Entry entry = detail.getTransaction().getToAccountEntry();

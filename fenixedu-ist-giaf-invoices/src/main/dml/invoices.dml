@@ -16,6 +16,8 @@ class SapRequest {
 	DateTime whenCreated;
 	Money advancement;
 	boolean sent;
+	boolean integrated;
+	String integrationMessage;
 	String request;
 	String answer;
 }

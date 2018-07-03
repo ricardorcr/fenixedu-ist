@@ -24,6 +24,7 @@ import pt.ist.fenixedu.giaf.invoices.EventLogger;
 import pt.ist.fenixedu.giaf.invoices.EventProcessor;
 import pt.ist.fenixedu.giaf.invoices.EventWrapper;
 import pt.ist.fenixedu.giaf.invoices.Utils;
+import pt.ist.fenixframework.Atomic.TxMode;
 
 @Task(englishTitle = "Sync financial information (debts, reciepts, exemptions and clients) with SAP.", readOnly = true)
 public class SyncFinancialInfoToSapTask extends CronTask {
@@ -31,6 +32,11 @@ public class SyncFinancialInfoToSapTask extends CronTask {
     @Override
     public void runTask() throws Exception {
         runSyncScript();
+    }
+    
+    @Override
+    protected TxMode getTxMode() {
+        return TxMode.READ;
     }
 
     private void runSyncScript() throws IOException, AddressException, MessagingException {

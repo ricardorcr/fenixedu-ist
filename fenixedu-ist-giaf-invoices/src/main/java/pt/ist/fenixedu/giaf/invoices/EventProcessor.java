@@ -1,12 +1,20 @@
 package pt.ist.fenixedu.giaf.invoices;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.stream.Collectors;
 
-import org.fenixedu.academic.domain.accounting.AccountingTransactionDetail;
 import org.fenixedu.academic.domain.accounting.Event;
+import org.fenixedu.academic.domain.accounting.calculator.DebtInterestCalculator;
+import org.fenixedu.academic.domain.accounting.calculator.Payment;
 import org.fenixedu.academic.util.Money;
+import org.joda.time.DateTime;
 
+import pt.ist.esw.advice.pt.ist.fenixframework.AtomicInstance;
 import pt.ist.fenixedu.giaf.invoices.GiafEvent.GiafEventEntry;
+import pt.ist.fenixframework.Atomic.TxMode;
+import pt.ist.fenixframework.CallableWithoutException;
+import pt.ist.fenixframework.FenixFramework;
 
 public class EventProcessor {
 
@@ -103,7 +111,19 @@ public class EventProcessor {
 
     public static void syncEventWithSap(final ClientMap clientMap, final ErrorLogConsumer consumer, final EventLogger elogger,
             final Event event) {
-        processSap(clientMap, consumer, elogger, event);
+        try {
+            FenixFramework.getTransactionManager().withTransaction(new CallableWithoutException<Void>() {
+
+                @Override
+                public Void call() {
+                    processSap(clientMap, consumer, elogger, event);
+                    return null;
+                }
+            }, new AtomicInstance(TxMode.SPECULATIVE_READ, false));
+        } catch (Exception e) {
+            logError(consumer, elogger, event, e);
+            e.printStackTrace();
+        }
     }
 
     private static void processSap(final ClientMap clientMap, final ErrorLogConsumer errorLog, final EventLogger elogger,
@@ -113,6 +133,7 @@ public class EventProcessor {
 
                 if (event.isCancelled()) {
                     //TODO
+                    return;
                 }
 
                 final EventWrapper eventWrapper = new EventWrapper(event, errorLog, true);
@@ -135,13 +156,10 @@ public class EventProcessor {
                                 errorLog, elogger);
 //                        return debtFenix;
                     } else if (invoiceSap.isNegative()) {
-                        //TODO something is wronggggggg
-                        // loggggg
-                        System.out
-                                .println("O evento " + eventWrapper.event.getExternalId() + " tem uma dívida negativa no SAP!!!");
+                        logError(event, errorLog, elogger, "A dívida no SAP é negativa");
                     } else if (!debtFenix.equals(invoiceSap)) {
                         if (debtFenix.greaterThan(invoiceSap)) {
-                            //System.out.println("divida fenix maior que sap$$$");
+//                            logError(event, errorLog, elogger, "A dívida no Fénix é superior à dívida registada no SAP");
                             debtResult = sapEvent.registerInvoice(clientMap, debtFenix.subtract(invoiceSap), eventWrapper.event,
                                     eventWrapper.isGratuity(), true, errorLog, elogger);
 //                            return debtFenix.subtract(invoiceSap);
@@ -150,7 +168,7 @@ public class EventProcessor {
                         } else {
 //                             diminuir divida no sap e credit note da diferença na última factura existente
 //                            se o valor pago nesta factura for superior à nova dívida, o que fazer? terá que existir nota crédito no fenix -> sim
-                            //System.out.println("divida sap igual ou menor a zero");
+//                            logError(event, errorLog, elogger, "A dívida no Fénix é inferior à dívida registada no SAP");
                             debtResult = sapEvent.registerCredit(clientMap, eventWrapper.event, invoiceSap.subtract(debtFenix),
                                     eventWrapper.isGratuity(), errorLog, elogger);
 //                            System.out.println("Ia registar abate à dívida?? " + eventWrapper.event.getExternalId()
@@ -163,9 +181,13 @@ public class EventProcessor {
                 if (debtResult) {
                     //System.out.println("pagamentos");
                     //Payments!!
-                    for (AccountingTransactionDetail transactionDetail : eventWrapper.paymentsSap()) {
-                        if (!sapEvent.hasPayment(transactionDetail)) {
-                            boolean result = sapEvent.registerPayment(clientMap, transactionDetail, errorLog, elogger);
+                    DebtInterestCalculator calculator = event.getDebtInterestCalculator(new DateTime());
+                    List<Payment> payments = calculator.getPayments().collect(Collectors.toList());
+                    for (Payment payment : payments) {
+                        if (payment.getAmount().intValue() != 0 && payment.isForDebt()
+                                && payment.getDate().isAfter(EventWrapper.SAP_TRANSACTIONS_THRESHOLD)
+                                && !sapEvent.hasPayment(payment.getId())) {
+                            boolean result = sapEvent.registerPayment(clientMap, payment, errorLog, elogger);
                             if (!result) {
                                 return;
                             }
@@ -174,33 +196,36 @@ public class EventProcessor {
 
                     //Exemptions!!
                     //System.out.println("está a validar isenções");
-                    if (eventWrapper.exempt.greaterThan(sapEvent.getCreditAmount())) {
+                    Money exemptionsAmount = new Money(calculator.getDebtExemptionAmount());
+                    if (exemptionsAmount.greaterThan(sapEvent.getCreditAmount())) {
                         boolean result = sapEvent.registerCredit(clientMap, eventWrapper.event,
-                                eventWrapper.exempt.subtract(sapEvent.getCreditAmount()), eventWrapper.isGratuity(), errorLog,
+                                exemptionsAmount.subtract(sapEvent.getCreditAmount()), eventWrapper.isGratuity(), errorLog,
                                 elogger);
                         if (!result) {
                             return;
                         }
-                    } else if (eventWrapper.exempt.lessThan(sapEvent.getCreditAmount())) {
+                    } else if (exemptionsAmount.lessThan(sapEvent.getCreditAmount())) {
+
+                        //TODO foram apagadas isenções?
+                        System.out.println("No evento " + event.getExternalId() + " o valor das isenções no fénix é de: "
+                                + exemptionsAmount + " e no SAP é: " + sapEvent.getCreditAmount());
 
                         //(valor da divida no fenix - isenção fenix) tem de ser igual ao (valor das facturas sap - valor dos creditos)
-                        Money finalFenixDebt = eventWrapper.debt.subtract(eventWrapper.exempt);
-                        Money finalSapDebt = sapEvent.getInvoiceAmount().subtract(sapEvent.getCreditAmount());
-
-                        // se o valor da diferença for positivo que dizer que é preciso lançar dívida, caso contrário está tudo certo
-                        Money invoiceValue = finalFenixDebt.subtract(finalSapDebt);
-                        if (invoiceValue.isPositive()) {
-                            boolean result = sapEvent.registerInvoice(clientMap, invoiceValue, eventWrapper.event,
-                                    eventWrapper.isGratuity(), true,
-                                    errorLog, elogger);
-                            if (!result) {
-                                return;
-                            }
-                        }
+//                        Money finalFenixDebt = eventWrapper.debt.subtract(exemptionsAmount);
+//                        Money finalSapDebt = sapEvent.getInvoiceAmount().subtract(sapEvent.getCreditAmount());
+//
+//                        // se o valor da diferença for positivo que dizer que é preciso lançar dívida, caso contrário está tudo certo
+//                        Money invoiceValue = finalFenixDebt.subtract(finalSapDebt);
+//                        if (invoiceValue.isPositive()) {
+//                            boolean result = sapEvent.registerInvoice(clientMap, invoiceValue, eventWrapper.event,
+//                                    eventWrapper.isGratuity(), true, errorLog, elogger);
+//                            if (!result) {
+//                                return;
+//                            }
+//                        }
                     }
 
-                    //System.out.println("Reimbursements");
-                    //TODO confirmar a estrutura das notas de credito no fenix
+                    //System.out.println("Reimbursements");                    
                     Money sapReimbursements = sapEvent.getReimbursementsAmount();
                     if (eventWrapper.reimbursements.greaterThan(sapReimbursements)) {
                         boolean result = sapEvent.registerReimbursement(clientMap, eventWrapper.event,
@@ -241,8 +266,8 @@ public class EventProcessor {
         }
 
         errorLog.accept(event.getExternalId(), event.getPerson().getUsername(), event.getPerson().getName(),
-                amount == null ? "" : amount.toPlainString(),
-                cycleType == null ? "" : cycleType.getDescription(), errorMessage, "", "", "", "", "", "", "", "", "", "", "");
+                amount == null ? "" : amount.toPlainString(), cycleType == null ? "" : cycleType.getDescription(), errorMessage,
+                "", "", "", "", "", "", "", "", "", "", "");
         elogger.log("%s: %s%n", event.getExternalId(), errorMessage);
 //            if (errorMessage.indexOf("digo de Entidade ") > 0 && errorMessage.indexOf(" invlido/inexistente!") > 0) {
 //                return;
@@ -252,8 +277,24 @@ public class EventProcessor {
 //                return;
 //            }
         elogger.log(
-                "Unhandled SAP error for event " + event.getExternalId() + " : " + e.getClass().getName() + " - "
-                + errorMessage);
+                "Unhandled SAP error for event " + event.getExternalId() + " : " + e.getClass().getName() + " - " + errorMessage);
         e.printStackTrace();
+    }
+
+    private static void logError(Event event, ErrorLogConsumer errorLog, EventLogger elogger, String errorMessage) {
+        BigDecimal amount;
+        DebtCycleType cycleType;
+        try {
+            amount = event.getOriginalAmountToPay().getAmount();
+            cycleType = Utils.cycleType(event);
+        } catch (Exception ex) {
+            amount = null;
+            cycleType = null;
+        }
+
+        errorLog.accept(event.getExternalId(), event.getPerson().getUsername(), event.getPerson().getName(),
+                amount == null ? "" : amount.toPlainString(), cycleType == null ? "" : cycleType.getDescription(), errorMessage,
+                "", "", "", "", "", "", "", "", "", "", "");
+        elogger.log("%s: %s %s %s %n", event.getExternalId(), errorMessage, "", "");
     }
 }

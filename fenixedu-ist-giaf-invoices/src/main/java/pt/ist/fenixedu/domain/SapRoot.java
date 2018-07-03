@@ -38,7 +38,6 @@ public class SapRoot extends SapRoot_Base {
      * 
      * @return
      */
-    @Atomic(mode = TxMode.WRITE)
     public Long getAndSetNextDocumentNumber() {
         Long sapDocumentNumber = getSapDocumentNumber();
         super.setSapDocumentNumber(sapDocumentNumber + 1);
