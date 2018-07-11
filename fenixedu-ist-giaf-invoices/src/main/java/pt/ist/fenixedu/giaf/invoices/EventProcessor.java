@@ -184,7 +184,7 @@ public class EventProcessor {
                     DebtInterestCalculator calculator = event.getDebtInterestCalculator(new DateTime());
                     List<Payment> payments = calculator.getPayments().collect(Collectors.toList());
                     for (Payment payment : payments) {
-                        if (payment.getAmount().intValue() != 0 && payment.isForDebt()
+                        if (payment.getAmount().compareTo(BigDecimal.ZERO) > 0 && payment.isForDebt()
                                 && payment.getDate().isAfter(EventWrapper.SAP_TRANSACTIONS_THRESHOLD)
                                 && !sapEvent.hasPayment(payment.getId())) {
                             boolean result = sapEvent.registerPayment(clientMap, payment, errorLog, elogger);
