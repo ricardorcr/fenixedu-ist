@@ -152,20 +152,20 @@ public class SapEvent {
         }
     }
 
-    public boolean registerInvoice(ClientMap clientMap, Money debtFenix, Event event, boolean isGratuity, boolean isNewDate,
+    public boolean registerInvoice(Money debtFenix, Event event, boolean isGratuity, boolean isNewDate,
             ErrorLogConsumer errorLog, EventLogger elogger) throws Exception {
 
         if (isGratuity) {
             //if debt is greater than invoice, then there was a debt registered and the correspondent invoice failed, don't register the debt again
             if (!getDebtAmount().greaterThan(getInvoiceAmount())) {
-                boolean result = registerDebt(clientMap, debtFenix, event, isNewDate, errorLog, elogger);
+                boolean result = registerDebt(debtFenix, event, isNewDate, errorLog, elogger);
                 if (!result) { //if the debt register didn't went ok we wont register the invoice
                     return result;
                 }
             }
         }
 
-        String clientId = clientMap.getClientId(event.getPerson());
+        String clientId = ClientMap.uVATNumberFor(event.getPerson());
         JsonObject data = toJsonInvoice(event, debtFenix, new DateTime(), clientId, false, isNewDate);
 
         String documentNumber = getDocumentNumber(data, false);
@@ -247,10 +247,10 @@ public class SapEvent {
         return true;
     }
 
-    private boolean registerDebt(ClientMap clientMap, Money debtFenix, Event event, boolean isNewDate, ErrorLogConsumer errorLog,
+    private boolean registerDebt(Money debtFenix, Event event, boolean isNewDate, ErrorLogConsumer errorLog,
             EventLogger elogger) throws Exception {
 
-        String clientId = clientMap.getClientId(event.getPerson());
+        String clientId = ClientMap.uVATNumberFor(event.getPerson());
         JsonObject data = toJsonDebt(event, debtFenix, clientId, new DateTime(), true, "NG", true, isNewDate);
 
         String documentNumber = getDocumentNumber(data, false);
@@ -276,10 +276,10 @@ public class SapEvent {
         }
     }
 
-    private boolean registerDebtCredit(ClientMap clientMap, Money creditAmount, Event event, boolean isNewDate,
+    private boolean registerDebtCredit(Money creditAmount, Event event, boolean isNewDate,
             ErrorLogConsumer errorLog, EventLogger elogger) throws Exception {
 
-        String clientId = clientMap.getClientId(event.getPerson());
+        String clientId = ClientMap.uVATNumberFor(event.getPerson());
         SimpleImmutableEntry<List<SapEventEntry>, Money> openDebtsAndRemainingValue = getOpenDebtsAndRemainingValue();
         List<SapEventEntry> openDebts = openDebtsAndRemainingValue.getKey();
         Money remainingAmount = openDebtsAndRemainingValue.getValue();
@@ -358,7 +358,7 @@ public class SapEvent {
         }
     }
 
-    public boolean registerCredit(ClientMap clientMap, Event event, Money creditAmount, boolean isGratuity,
+    public boolean registerCredit(Event event, Money creditAmount, boolean isGratuity,
             ErrorLogConsumer errorLog, EventLogger elogger) throws Exception {
         // diminuir divida no sap (se for propina diminuir dívida) e credit note na última factura existente
         // se o valor pago nesta factura for superior à nova dívida, o que fazer? terá que existir nota crédito no fenix -> sim
@@ -367,14 +367,14 @@ public class SapEvent {
             //if the debt credit amount is greater than the credit amount it means that a credit debt was registered but the correspondent invoice credit failed
             //we don't register the credit debt again
             if (!getDebtCreditAmount().greaterThan(getCreditAmount())) {
-                boolean result = registerDebtCredit(clientMap, creditAmount, event, true, errorLog, elogger);
+                boolean result = registerDebtCredit(creditAmount, event, true, errorLog, elogger);
                 if (!result) { //if the debt credit didn't went ok, we abort the credit register
                     return result;
                 }
             }
         }
 
-        String clientId = clientMap.getClientId(event.getPerson());
+        String clientId = ClientMap.uVATNumberFor(event.getPerson());
 
         SimpleImmutableEntry<List<SapEventEntry>, Money> openInvoicesAndRemainingValue = getOpenInvoicesAndRemainingValue();
         List<SapEventEntry> openInvoices = openInvoicesAndRemainingValue.getKey();
@@ -457,13 +457,13 @@ public class SapEvent {
         }
     }
 
-    public boolean registerReimbursement(ClientMap clientMap, Event event, Money amount, ErrorLogConsumer errorLog,
+    public boolean registerReimbursement(Event event, Money amount, ErrorLogConsumer errorLog,
             EventLogger elogger) throws Exception {
 
         String invoiceNumber = getLastInvoiceNumber();
         checkValidDocumentNumber(invoiceNumber, event);
 
-        String clientId = clientMap.getClientId(event.getPerson());
+        String clientId = ClientMap.uVATNumberFor(event.getPerson());
         JsonObject data = toJsonReimbursement(event, amount, clientId, invoiceNumber, false, true);
 
         String documentNumber = getDocumentNumber(data, true);
@@ -497,12 +497,12 @@ public class SapEvent {
         return true;
     }
 
-    public boolean registerPayment(ClientMap clientMap, Payment payment, ErrorLogConsumer errorLog, EventLogger elogger)
+    public boolean registerPayment(Payment payment, ErrorLogConsumer errorLog, EventLogger elogger)
             throws Exception {
 
         AccountingTransactionDetail transactionDetail =
                 ((AccountingTransaction) FenixFramework.getDomainObject(payment.getId())).getTransactionDetail();
-        String clientId = clientMap.getClientId(transactionDetail.getEvent().getPerson());
+        String clientId = ClientMap.uVATNumberFor(transactionDetail.getEvent().getPerson());
 
         // ir buscar a ultima factura aberta e verificar se o pagamento ultrapassa o valor da factura
         // e associar o restante à(s) factura(s) seguinte(s)

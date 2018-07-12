@@ -178,7 +178,7 @@ public class Utils {
             return false;
         }
 
-        final BigDecimal amount = event.getOriginalAmountToPay().getAmount();
+        final BigDecimal amount = originalAmountToPay.getAmount();
         //final BigDecimal amount = event.getOriginalAmountToPay().getAmount();
         if (amount.signum() <= 0) {
             if (event.isCancelled()) {
