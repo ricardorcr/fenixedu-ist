@@ -1,8 +1,5 @@
 package pt.ist.fenixedu.integration.task;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
 import org.fenixedu.academic.domain.ExecutionYear;
 import org.fenixedu.academic.domain.accounting.Event;
 import org.fenixedu.academic.domain.accounting.calculator.DebtInterestCalculator;
@@ -22,22 +19,24 @@ import pt.ist.fenixedu.giaf.invoices.Utils;
 
 public class InitializeSapData extends CustomTask {
 
-    private static ExecutionYear startYear = null;
-    private static ExecutionYear SAP_3RD_CYCLE_THRESHOLD = null;
+    private static final JsonObject EMPTY_JSON_OBJECT = new JsonObject();
+
+    private ExecutionYear startYear = null;
+    private ExecutionYear SAP_3RD_CYCLE_THRESHOLD = null;
     private static DateTime FIRST_DAY = new DateTime(2018, 01, 01, 00, 00);
     private static DateTime LAST_DAY = new DateTime(2017, 12, 31, 23, 59, 59);
-    private static Money payments = Money.ZERO;
-    private static Money exemptions = Money.ZERO;
+    private Money payments = Money.ZERO;
+    private Money exemptions = Money.ZERO;
 
-    private static boolean needsProcessing(final Event event) {
+    private boolean needsProcessing(final Event event) {
         try {
             final ExecutionYear executionYear = Utils.executionYearOf(event);
             return !event.isCancelled()
                     && (!executionYear.isBefore(startYear)
                             || (event instanceof PhdGratuityEvent && !executionYear.isBefore(SAP_3RD_CYCLE_THRESHOLD)))
                     && (!event.getAccountingTransactionsSet().isEmpty() || !event.getExemptionsSet().isEmpty());
-        } catch (Exception e) {
-            System.out.println("O evento " + event.getExternalId() + " deu o seguinte erro: " + e.getMessage());
+        } catch (final Exception e) {
+            taskLog("O evento %s deu o seguinte erro: %s%n", event.getExternalId(), e.getMessage());
             return false;
         }
     }
@@ -46,37 +45,41 @@ public class InitializeSapData extends CustomTask {
     public void runTask() throws Exception {
         startYear = ExecutionYear.readExecutionYearByName("2015/2016");
         SAP_3RD_CYCLE_THRESHOLD = ExecutionYear.readExecutionYearByName("2014/2015");
-        List<Event> events = Bennu.getInstance().getAccountingEventsSet().stream().filter(InitializeSapData::needsProcessing)
-                .collect(Collectors.toList());
+        // in case transaction restarts... reset state.
+        payments = Money.ZERO;
+        exemptions = Money.ZERO;
 
-        for (Event event : events) {
-            try {
-                process(event);
-            } catch (Exception e) {
-                taskLog("Erro no evento %s %s\n", event.getExternalId(), e.getMessage());
-                e.printStackTrace();
-            }
-        }
+        Bennu.getInstance().getAccountingEventsSet().stream()
+            .filter(this::needsProcessing)
+            .forEach(event -> {
+                try {
+                    process(event);
+                } catch (final Exception e) {
+                    taskLog("Erro no evento %s %s\n", event.getExternalId(), e.getMessage());
+                    e.printStackTrace();
+                }                
+            });
+
         taskLog("O valor dos pagamentos foi de %s\n", payments.toPlainString());
         taskLog("O valor das insenções foi de %s\n", exemptions.toPlainString());
     }
 
-    public void process(Event event) {
-        DebtInterestCalculator debtInterestCalculator = event.getDebtInterestCalculator(LAST_DAY);
-        Money amountPayed = processPayments(event, debtInterestCalculator);
+    public void process(final Event event) {
+        final DebtInterestCalculator debtInterestCalculator = event.getDebtInterestCalculator(LAST_DAY);
+        final Money amountPayed = processPayments(event, debtInterestCalculator);
         processExemptions(event, amountPayed, debtInterestCalculator);
         processReimbursements(event);
     }
 
-    private Money processPayments(Event event, DebtInterestCalculator debtInterestCalculator) {
+    private Money processPayments(final Event event, final DebtInterestCalculator debtInterestCalculator) {
 
-        Money paidAmount = new Money(debtInterestCalculator.getPaidDebtAmount());
+        final Money paidAmount = new Money(debtInterestCalculator.getPaidDebtAmount());
 
-        String clientId = null;
+        final String clientId;
         if (event.getParty().isPerson()) {
             clientId = ClientMap.uVATNumberFor(event.getPerson());
         } else {
-            clientId = event.getParty().getExternalId();
+            //clientId = event.getParty().getExternalId();
             //taskLog("Dívida de empresa!! - %s\n", clientId);
             return Money.ZERO;
         }
@@ -84,21 +87,21 @@ public class InitializeSapData extends CustomTask {
         if (paidAmount.isPositive()) {
             payments = payments.add(paidAmount);
 
-            SapRequest sapInvoiceRequest =
-                    new SapRequest(event, clientId, paidAmount, "ND0", SapRequestType.INVOICE, Money.ZERO, new JsonObject());
+            final SapRequest sapInvoiceRequest =
+                    new SapRequest(event, clientId, paidAmount, "ND0", SapRequestType.INVOICE, Money.ZERO, EMPTY_JSON_OBJECT);
             sapInvoiceRequest.setWhenSent(FIRST_DAY);
             sapInvoiceRequest.setSent(true);
 //            persistLocalChange(clientId, "ND0", "", "invoice", amountToRegister, REGISTER_DATE, "", Money.ZERO, sapFile, jArray);
             if (event.isGratuity()) {
-                SapRequest sapDebtRequest =
-                        new SapRequest(event, clientId, paidAmount, "NG0", SapRequestType.DEBT, Money.ZERO, new JsonObject());
+                final SapRequest sapDebtRequest =
+                        new SapRequest(event, clientId, paidAmount, "NG0", SapRequestType.DEBT, Money.ZERO, EMPTY_JSON_OBJECT);
                 sapDebtRequest.setWhenSent(FIRST_DAY);
                 sapDebtRequest.setSent(true);
 //                persistLocalChange(clientId, "NG0", "", "debt", amountToRegister, REGISTER_DATE, "", Money.ZERO, sapFile, jArray);
             }
 
-            SapRequest sapPaymentRequest =
-                    new SapRequest(event, clientId, paidAmount, "NP0", SapRequestType.PAYMENT, Money.ZERO, new JsonObject());
+            final SapRequest sapPaymentRequest =
+                    new SapRequest(event, clientId, paidAmount, "NP0", SapRequestType.PAYMENT, Money.ZERO, EMPTY_JSON_OBJECT);
             sapPaymentRequest.setWhenSent(FIRST_DAY);
             sapPaymentRequest.setSent(true);
 
@@ -107,37 +110,32 @@ public class InitializeSapData extends CustomTask {
 //            return isPartialRegime(event) ? paidDebtAmount : Money.ZERO;
         }
 
-        Money interestAndfineAmount =
+        final Money interestAndfineAmount =
                 new Money(debtInterestCalculator.getPaidInterestAmount().add(debtInterestCalculator.getPaidInterestAmount()));
         if (interestAndfineAmount.isPositive()) {
             payments = payments.add(interestAndfineAmount);
 
-            SapRequest sapInvoiceRequest = new SapRequest(event, clientId, interestAndfineAmount, "ND0",
-                    SapRequestType.INVOICE_INTEREST, Money.ZERO, new JsonObject());
+            final SapRequest sapInvoiceRequest = new SapRequest(event, clientId, interestAndfineAmount, "ND0",
+                    SapRequestType.INVOICE_INTEREST, Money.ZERO, EMPTY_JSON_OBJECT);
             sapInvoiceRequest.setWhenSent(FIRST_DAY);
             sapInvoiceRequest.setSent(true);
 //            persistLocalChange(clientId, "ND0", "", "invoice", amountToRegister, REGISTER_DATE, "", Money.ZERO, sapFile, jArray);
 
-            SapRequest sapPaymentRequest = new SapRequest(event, clientId, interestAndfineAmount, "NP0",
-                    SapRequestType.PAYMENT_INTEREST, Money.ZERO, new JsonObject());
+            final SapRequest sapPaymentRequest = new SapRequest(event, clientId, interestAndfineAmount, "NP0",
+                    SapRequestType.PAYMENT_INTEREST, Money.ZERO, EMPTY_JSON_OBJECT);
             sapPaymentRequest.setWhenSent(FIRST_DAY);
             sapPaymentRequest.setSent(true);
         }
         return Money.ZERO;
     }
 
-    private boolean isPartialRegime(Event event) {
-        if (event instanceof GratuityEventWithPaymentPlan) {
-            if (((GratuityEventWithPaymentPlan) event).getGratuityPaymentPlan().isForPartialRegime()) {
-                return true;
-            }
-        }
-        return false;
+    private boolean isPartialRegime(final Event event) {
+        return event instanceof GratuityEventWithPaymentPlan && ((GratuityEventWithPaymentPlan) event).getGratuityPaymentPlan().isForPartialRegime();
     }
 
-    private void processExemptions(Event event, Money amountPayed, DebtInterestCalculator debtInterestCalculator) {
+    private void processExemptions(final Event event, final Money amountPayed, final DebtInterestCalculator debtInterestCalculator) {
 
-        Money amountToRegister = new Money(debtInterestCalculator.getDebtExemptionAmount()
+        final Money amountToRegister = new Money(debtInterestCalculator.getDebtExemptionAmount()
                 .add(debtInterestCalculator.getInterestExemptionAmount()).add(debtInterestCalculator.getFineExemptionAmount()));
         if (amountToRegister.isPositive()) {
             //TODO remove when fully tested, if we register a different value for the exemption
@@ -145,7 +143,7 @@ public class InitializeSapData extends CustomTask {
 
             //when the events are referring to partial regime
             if (amountPayed.isPositive() && isPartialRegime(event)) {
-                Money originalAmount = event.getOriginalAmountToPay();
+                final Money originalAmount = event.getOriginalAmountToPay();
                 if (amountToRegister.add(amountPayed).greaterThan(originalAmount)) {
                     taskLog("Evento: %s # Montante original: %s # montante pago: %s # montante a registar: %s\n",
                             event.getExternalId(), originalAmount, amountPayed, amountToRegister);
@@ -155,7 +153,7 @@ public class InitializeSapData extends CustomTask {
 
             exemptions = exemptions.add(amountToRegister);
 
-            String clientId = null;
+            final String clientId;
             if (event.getParty().isPerson()) {
                 clientId = ClientMap.uVATNumberFor(event.getPerson());
             } else {
@@ -165,25 +163,25 @@ public class InitializeSapData extends CustomTask {
             }
 
             //an exemption should be considered as a payment for the initialization
-            SapRequest sapInvoiceRequest = new SapRequest(event, clientId, amountToRegister, "ND0", SapRequestType.INVOICE,
-                    Money.ZERO, new JsonObject());
+            final SapRequest sapInvoiceRequest = new SapRequest(event, clientId, amountToRegister, "ND0", SapRequestType.INVOICE,
+                    Money.ZERO, EMPTY_JSON_OBJECT);
             sapInvoiceRequest.setWhenSent(FIRST_DAY);
             sapInvoiceRequest.setSent(true);
 
-            SapRequest sapCreditRequest =
-                    new SapRequest(event, clientId, amountToRegister, "NA0", SapRequestType.CREDIT, Money.ZERO, new JsonObject());
+            final SapRequest sapCreditRequest =
+                    new SapRequest(event, clientId, amountToRegister, "NA0", SapRequestType.CREDIT, Money.ZERO, EMPTY_JSON_OBJECT);
             sapCreditRequest.setWhenSent(FIRST_DAY);
             sapCreditRequest.setSent(true);
 //            persistLocalChange(clientId, "NA0", "", "credit", amountToRegister, REGISTER_DATE, "", Money.ZERO, sapFile, jArray);
             if (event.isGratuity()) {
-                SapRequest sapDebtRequest = new SapRequest(event, clientId, amountToRegister, "NG0", SapRequestType.DEBT,
-                        Money.ZERO, new JsonObject());
+                final SapRequest sapDebtRequest = new SapRequest(event, clientId, amountToRegister, "NG0", SapRequestType.DEBT,
+                        Money.ZERO, EMPTY_JSON_OBJECT);
                 sapDebtRequest.setWhenSent(FIRST_DAY);
                 sapDebtRequest.setSent(true);
 //                persistLocalChange(clientId, "NG0", "", "debt", amountToRegister, REGISTER_DATE, "", Money.ZERO, sapFile, jArray);
 
-                SapRequest sapDebtCreditRequest = new SapRequest(event, clientId, amountToRegister.negate(), "NJ0",
-                        SapRequestType.DEBT, Money.ZERO, new JsonObject());
+                final SapRequest sapDebtCreditRequest = new SapRequest(event, clientId, amountToRegister.negate(), "NJ0",
+                        SapRequestType.DEBT, Money.ZERO, EMPTY_JSON_OBJECT);
                 sapDebtCreditRequest.setWhenSent(FIRST_DAY);
                 sapDebtCreditRequest.setSent(true);
 //                persistLocalChange(clientId, "NJ0", "", "debt", amountToRegister.negate(), REGISTER_DATE, "", Money.ZERO, sapFile,
@@ -192,8 +190,8 @@ public class InitializeSapData extends CustomTask {
         }
     }
 
-    private void processReimbursements(Event event) {
-        Money amountToRegister = event.getAccountingTransactionsSet().stream().flatMap(at -> at.getEntriesSet().stream())
+    private void processReimbursements(final Event event) {
+        final Money amountToRegister = event.getAccountingTransactionsSet().stream().flatMap(at -> at.getEntriesSet().stream())
                 .flatMap(e -> e.getReceiptsSet().stream()).flatMap(r -> r.getCreditNotesSet().stream())
                 .filter(cn -> !cn.isAnnulled()).flatMap(cn -> cn.getCreditNoteEntriesSet().stream()).map(cne -> cne.getAmount())
                 .reduce(Money.ZERO, Money::add);
@@ -201,7 +199,7 @@ public class InitializeSapData extends CustomTask {
             taskLog("O evento: %s - tem nota de crédito associada, no valor de: %s\n", event.getExternalId(),
                     amountToRegister.toPlainString());
 
-            String clientId = null;
+            final String clientId;
             if (event.getParty().isPerson()) {
                 clientId = ClientMap.uVATNumberFor(event.getPerson());
             } else {
@@ -209,8 +207,8 @@ public class InitializeSapData extends CustomTask {
                 taskLog("Dívida de empresa!! - %s\n", clientId);
                 return;
             }
-            SapRequest sapRequest = new SapRequest(event, clientId, amountToRegister, "NR0", SapRequestType.REIMBURSEMENT,
-                    Money.ZERO, new JsonObject());
+            final SapRequest sapRequest = new SapRequest(event, clientId, amountToRegister, "NR0", SapRequestType.REIMBURSEMENT,
+                    Money.ZERO, EMPTY_JSON_OBJECT);
             sapRequest.setWhenSent(FIRST_DAY);
             sapRequest.setSent(true);
 //            persistLocalChange(clientId, "NR0", "", "reimbursement", amountToRegister, REGISTER_DATE, "", Money.ZERO, sapFile,
