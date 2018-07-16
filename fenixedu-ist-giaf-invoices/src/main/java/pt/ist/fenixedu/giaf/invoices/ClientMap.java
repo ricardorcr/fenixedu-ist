@@ -76,9 +76,9 @@ public class ClientMap {
             //return null;
         }
         if (vat != null) {
-            return trimVatTo12Digits(country.getCode() + vat);
+            return /*trimVatTo12Digits(*/country.getCode() + vat/*)*/;
         }
-        return trimVatTo12Digits(country.getCode() + makeUpSomeRandomNumber(person));
+        return null;//trimVatTo12Digits(country.getCode() + makeUpSomeRandomNumber(person));
     }
 
     private static String trimVatTo12Digits(final String uVat) {
