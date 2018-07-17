@@ -43,6 +43,8 @@ import org.fenixedu.generated.sources.saft.sap.SAFTPTSourceBilling;
 import org.fenixedu.generated.sources.saft.sap.SAFTPTSourcePayment;
 import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
+import org.joda.time.format.DateTimeFormatter;
+import org.springframework.format.datetime.joda.DateTimeFormatterFactory;
 
 import com.google.common.base.Strings;
 import com.google.gson.JsonArray;
@@ -63,6 +65,9 @@ public class SapEvent {
     private static final int MAX_SIZE_ADDRESS = 100;
     private static final int MAX_SIZE_CITY = 50;
     private static final int MAX_SIZE_REGION = 50;
+    private static final DateTimeFormatter localDateFormatter =
+            new DateTimeFormatterFactory("yyyy-MM-dd").createDateTimeFormatter();
+
 
     private final Comparator<SapEventEntry> DOCUMENT_NUMBER_COMPARATOR = new Comparator<SapEventEntry>() {
         @Override
@@ -684,6 +689,9 @@ public class SapEvent {
             if (!sr.getIntegrated()) {
                 JsonParser jsonParser = new JsonParser();
                 JsonObject data = (JsonObject) jsonParser.parse(sr.getRequest());
+
+                checkAndCorrectDates(sr, data);
+
                 JsonObject result = sendDataToSap(sr, data);
                 if (result.get("exception") == null) {
                     boolean docIsIntregrated =
@@ -711,6 +719,45 @@ public class SapEvent {
             }
         }
         return true;
+    }
+
+    private void checkAndCorrectDates(SapRequest sr, JsonObject data) {
+        LocalDate now = new LocalDate();
+        boolean changed = false;
+
+        if (sr.getRequestType() == SapRequestType.DEBT) {
+            JsonObject metadata = data.get("workingDocument").getAsJsonObject().get("debtMetadata").getAsJsonObject();
+
+            LocalDate startDate = LocalDate.parse(metadata.get("START_DATE").getAsString(), localDateFormatter);
+            if (startDate.isBefore(now)) {
+                metadata.addProperty("START_DATE", now.toString("yyyy-MM-dd"));
+                changed = true;
+            }
+
+            LocalDate endDate = LocalDate.parse(metadata.get("END_DATE").getAsString(), localDateFormatter);
+            if (endDate.isBefore(now)) {
+                metadata.addProperty("END_DATE", now.toString("yyyy-MM-dd"));
+                changed = true;
+            }
+        }
+
+        if (sr.getRequestType() == SapRequestType.INVOICE || sr.getRequestType() == SapRequestType.DEBT
+                || sr.getRequestType() == SapRequestType.CREDIT
+                || sr.getRequestType() == SapRequestType.INVOICE_INTEREST
+                || sr.getRequestType() == SapRequestType.REIMBURSEMENT || sr.getRequestType() == SapRequestType.ADVANCEMENT) {
+            data.get("workingDocument").getAsJsonObject().addProperty("documentDate", new DateTime().toString(DT_FORMAT));
+            changed = true;
+        }
+        if (sr.getRequestType() == SapRequestType.PAYMENT || sr.getRequestType() == SapRequestType.PAYMENT_INTEREST
+                || sr.getRequestType() == SapRequestType.REIMBURSEMENT || sr.getRequestType() == SapRequestType.ADVANCEMENT
+                || sr.getRequestType() == SapRequestType.CREDIT) {
+            data.get("paymentDocument").getAsJsonObject().addProperty("paymentDate", new DateTime().toString(DT_FORMAT));
+            changed = true;
+        }
+
+        if (changed) {
+            sr.setRequest(data.toString());
+        }
     }
 
     /**
