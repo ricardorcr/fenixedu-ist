@@ -8,7 +8,6 @@ import java.util.stream.Stream;
 import javax.mail.MessagingException;
 import javax.mail.internet.AddressException;
 
-import org.fenixedu.academic.domain.Person;
 import org.fenixedu.academic.domain.accounting.Event;
 import org.fenixedu.bennu.GiafInvoiceConfiguration;
 import org.fenixedu.bennu.core.domain.Bennu;
@@ -18,7 +17,6 @@ import org.fenixedu.commons.spreadsheet.Spreadsheet;
 import org.fenixedu.commons.spreadsheet.Spreadsheet.Row;
 import org.joda.time.DateTime;
 
-import pt.ist.fenixedu.giaf.invoices.ClientMap;
 import pt.ist.fenixedu.giaf.invoices.ErrorLogConsumer;
 import pt.ist.fenixedu.giaf.invoices.EventLogger;
 import pt.ist.fenixedu.giaf.invoices.EventProcessor;
@@ -75,17 +73,9 @@ public class SyncFinancialInfoToSapTask extends CronTask {
         };
         final EventLogger elogger = (msg, args) -> taskLog(msg, args);
 
-        final ClientMap clientMap = new ClientMap();
-
-        unfilteredEventStream(errorLogConsumer).map(e -> e.getParty()).filter(p -> p != null && p.isPerson()).map(p -> (Person) p)
-                .distinct().filter(p -> !clientMap.containsClient(p))
-                .filter(p -> !"PT999999990".equals(ClientMap.uVATNumberFor(p)))
-                .forEach(p -> clientMap.register(ClientMap.uVATNumberFor(p), ClientMap.uVATNumberFor(p)));
-        touch("Updated existing client information.");
-
         touch("Processing events...");
         unfilteredEventStream(errorLogConsumer)
-                .forEach(e -> EventProcessor.syncEventWithSap(clientMap, errorLogConsumer, elogger, e));
+                .forEach(e -> EventProcessor.syncEventWithSap(errorLogConsumer, elogger, e));
 //        Money amountInDebt = unfilteredEventStream(errorLogConsumer)
 //                .map(e -> EventProcessor.syncEventWithSap(clientMap, errorLogConsumer, elogger, e))
 //                .reduce(Money.ZERO, Money::add);

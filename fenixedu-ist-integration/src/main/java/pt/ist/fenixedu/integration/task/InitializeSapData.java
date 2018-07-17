@@ -45,6 +45,7 @@ public class InitializeSapData extends CustomTask {
     public void runTask() throws Exception {
         startYear = ExecutionYear.readExecutionYearByName("2015/2016");
         SAP_3RD_CYCLE_THRESHOLD = ExecutionYear.readExecutionYearByName("2014/2015");
+
         // in case transaction restarts... reset state.
         payments = Money.ZERO;
         exemptions = Money.ZERO;
@@ -91,12 +92,14 @@ public class InitializeSapData extends CustomTask {
                     new SapRequest(event, clientId, paidAmount, "ND0", SapRequestType.INVOICE, Money.ZERO, EMPTY_JSON_OBJECT);
             sapInvoiceRequest.setWhenSent(FIRST_DAY);
             sapInvoiceRequest.setSent(true);
+            sapInvoiceRequest.setIntegrated(true);
 //            persistLocalChange(clientId, "ND0", "", "invoice", amountToRegister, REGISTER_DATE, "", Money.ZERO, sapFile, jArray);
             if (event.isGratuity()) {
                 final SapRequest sapDebtRequest =
                         new SapRequest(event, clientId, paidAmount, "NG0", SapRequestType.DEBT, Money.ZERO, EMPTY_JSON_OBJECT);
                 sapDebtRequest.setWhenSent(FIRST_DAY);
                 sapDebtRequest.setSent(true);
+                sapDebtRequest.setIntegrated(true);
 //                persistLocalChange(clientId, "NG0", "", "debt", amountToRegister, REGISTER_DATE, "", Money.ZERO, sapFile, jArray);
             }
 
@@ -104,6 +107,7 @@ public class InitializeSapData extends CustomTask {
                     new SapRequest(event, clientId, paidAmount, "NP0", SapRequestType.PAYMENT, Money.ZERO, EMPTY_JSON_OBJECT);
             sapPaymentRequest.setWhenSent(FIRST_DAY);
             sapPaymentRequest.setSent(true);
+            sapPaymentRequest.setIntegrated(true);
 
             //persistLocalChange(clientId, "NP0", "", "payment", amountToRegister, REGISTER_DATE, "", Money.ZERO, sapFile, jArray);
 
@@ -119,12 +123,14 @@ public class InitializeSapData extends CustomTask {
                     SapRequestType.INVOICE_INTEREST, Money.ZERO, EMPTY_JSON_OBJECT);
             sapInvoiceRequest.setWhenSent(FIRST_DAY);
             sapInvoiceRequest.setSent(true);
+            sapInvoiceRequest.setIntegrated(true);
 //            persistLocalChange(clientId, "ND0", "", "invoice", amountToRegister, REGISTER_DATE, "", Money.ZERO, sapFile, jArray);
 
             final SapRequest sapPaymentRequest = new SapRequest(event, clientId, interestAndfineAmount, "NP0",
                     SapRequestType.PAYMENT_INTEREST, Money.ZERO, EMPTY_JSON_OBJECT);
             sapPaymentRequest.setWhenSent(FIRST_DAY);
             sapPaymentRequest.setSent(true);
+            sapPaymentRequest.setIntegrated(true);
         }
         return Money.ZERO;
     }
@@ -167,23 +173,27 @@ public class InitializeSapData extends CustomTask {
                     Money.ZERO, EMPTY_JSON_OBJECT);
             sapInvoiceRequest.setWhenSent(FIRST_DAY);
             sapInvoiceRequest.setSent(true);
+            sapInvoiceRequest.setIntegrated(true);
 
             final SapRequest sapCreditRequest =
                     new SapRequest(event, clientId, amountToRegister, "NA0", SapRequestType.CREDIT, Money.ZERO, EMPTY_JSON_OBJECT);
             sapCreditRequest.setWhenSent(FIRST_DAY);
             sapCreditRequest.setSent(true);
+            sapCreditRequest.setIntegrated(true);
 //            persistLocalChange(clientId, "NA0", "", "credit", amountToRegister, REGISTER_DATE, "", Money.ZERO, sapFile, jArray);
             if (event.isGratuity()) {
                 final SapRequest sapDebtRequest = new SapRequest(event, clientId, amountToRegister, "NG0", SapRequestType.DEBT,
                         Money.ZERO, EMPTY_JSON_OBJECT);
                 sapDebtRequest.setWhenSent(FIRST_DAY);
                 sapDebtRequest.setSent(true);
+                sapDebtRequest.setIntegrated(true);
 //                persistLocalChange(clientId, "NG0", "", "debt", amountToRegister, REGISTER_DATE, "", Money.ZERO, sapFile, jArray);
 
                 final SapRequest sapDebtCreditRequest = new SapRequest(event, clientId, amountToRegister.negate(), "NJ0",
                         SapRequestType.DEBT, Money.ZERO, EMPTY_JSON_OBJECT);
                 sapDebtCreditRequest.setWhenSent(FIRST_DAY);
                 sapDebtCreditRequest.setSent(true);
+                sapDebtCreditRequest.setIntegrated(true);
 //                persistLocalChange(clientId, "NJ0", "", "debt", amountToRegister.negate(), REGISTER_DATE, "", Money.ZERO, sapFile,
 //                        jArray);
             }
@@ -211,6 +221,7 @@ public class InitializeSapData extends CustomTask {
                     Money.ZERO, EMPTY_JSON_OBJECT);
             sapRequest.setWhenSent(FIRST_DAY);
             sapRequest.setSent(true);
+            sapRequest.setIntegrated(true);
 //            persistLocalChange(clientId, "NR0", "", "reimbursement", amountToRegister, REGISTER_DATE, "", Money.ZERO, sapFile,
 //                    jArray);
         }

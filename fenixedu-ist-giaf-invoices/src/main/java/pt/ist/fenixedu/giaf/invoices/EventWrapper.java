@@ -1,8 +1,6 @@
 package pt.ist.fenixedu.giaf.invoices;
 
 import java.time.Year;
-import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.fenixedu.academic.domain.ExecutionYear;
@@ -64,8 +62,7 @@ public class EventWrapper {
     public static Stream<Event> eventsToProcessSap(final ErrorLogConsumer consumer, final Stream<Event> eventStream,
             final Stream<AccountingTransactionDetail> txStream) {
         final Stream<Event> currentEvents =
-                Stream.of(FenixFramework.getDomainObject("1976290546548756"), FenixFramework.getDomainObject("1976290546548755"),
-                        FenixFramework.getDomainObject("1975341358777277"));
+                Stream.of(FenixFramework.getDomainObject("1407400653357731"));
 //                eventStream.filter(EventWrapper::needsProcessingSap).filter(e -> Utils.validate(consumer, e));
 
         final int currentYear = Year.now().getValue();

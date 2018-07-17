@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.fenixedu.academic.domain.accounting.Event;
+import org.fenixedu.academic.domain.accounting.calculator.CreditEntry;
 import org.fenixedu.academic.domain.accounting.calculator.DebtInterestCalculator;
 import org.fenixedu.academic.domain.accounting.calculator.Payment;
 import org.fenixedu.academic.util.Money;
@@ -109,14 +110,13 @@ public class EventProcessor {
 
     }
 
-    public static void syncEventWithSap(final ClientMap clientMap, final ErrorLogConsumer consumer, final EventLogger elogger,
-            final Event event) {
+    public static void syncEventWithSap(final ErrorLogConsumer consumer, final EventLogger elogger, final Event event) {
         try {
             FenixFramework.getTransactionManager().withTransaction(new CallableWithoutException<Void>() {
 
                 @Override
                 public Void call() {
-                    processSap(clientMap, consumer, elogger, event);
+                    processSap(consumer, elogger, event);
                     return null;
                 }
             }, new AtomicInstance(TxMode.SPECULATIVE_READ, false));
@@ -126,15 +126,10 @@ public class EventProcessor {
         }
     }
 
-    private static void processSap(final ClientMap clientMap, final ErrorLogConsumer errorLog, final EventLogger elogger,
+    private static void processSap(final ErrorLogConsumer errorLog, final EventLogger elogger,
             final Event event) {
         try {
             if (EventWrapper.needsProcessingSap(event)) {
-
-                if (event.isCancelled()) {
-                    //TODO
-                    return;
-                }
 
                 final EventWrapper eventWrapper = new EventWrapper(event, errorLog, true);
                 final SapEvent sapEvent = new SapEvent(event);
@@ -152,28 +147,30 @@ public class EventProcessor {
                 if (debtFenix.isPositive()) {
                     if (invoiceSap.isZero()) {
                         //System.out.println("divida sap igual a zero");
-                        debtResult = sapEvent.registerInvoice(clientMap, debtFenix, event, eventWrapper.isGratuity(), false,
+                        debtResult = sapEvent.registerInvoice(debtFenix, event, eventWrapper.isGratuity(), false,
                                 errorLog, elogger);
 //                        return debtFenix;
                     } else if (invoiceSap.isNegative()) {
                         logError(event, errorLog, elogger, "A dívida no SAP é negativa");
                     } else if (!debtFenix.equals(invoiceSap)) {
-                        if (debtFenix.greaterThan(invoiceSap)) {
-//                            logError(event, errorLog, elogger, "A dívida no Fénix é superior à dívida registada no SAP");
-                            debtResult = sapEvent.registerInvoice(clientMap, debtFenix.subtract(invoiceSap), eventWrapper.event,
-                                    eventWrapper.isGratuity(), true, errorLog, elogger);
-//                            return debtFenix.subtract(invoiceSap);
-                            // criar invoice com a diferença entre debtFenix e invoiceDebtSap (se for propina aumentar a dívida no sap)
-                            //passar data actual (o valor do evento mudou, não dá para saber quando, vamos assumir que mudou qd foi detectada essa diferença)
-                        } else {
-//                             diminuir divida no sap e credit note da diferença na última factura existente
-//                            se o valor pago nesta factura for superior à nova dívida, o que fazer? terá que existir nota crédito no fenix -> sim
-//                            logError(event, errorLog, elogger, "A dívida no Fénix é inferior à dívida registada no SAP");
-                            debtResult = sapEvent.registerCredit(clientMap, eventWrapper.event, invoiceSap.subtract(debtFenix),
-                                    eventWrapper.isGratuity(), errorLog, elogger);
-//                            System.out.println("Ia registar abate à dívida?? " + eventWrapper.event.getExternalId()
-//                                    + " Valor dívida no Fénix: " + debtFenix + " - Valor dívida SAP: " + invoiceSap);
-                        }
+                        logError(event, errorLog, elogger, "A dívida no SAP é: " + invoiceSap.getAmountAsString()
+                                + " e no Fénix é: " + debtFenix.getAmountAsString());
+//                        if (debtFenix.greaterThan(invoiceSap)) {
+////                            logError(event, errorLog, elogger, "A dívida no Fénix é superior à dívida registada no SAP");
+//                            debtResult = sapEvent.registerInvoice(debtFenix.subtract(invoiceSap), eventWrapper.event,
+//                                    eventWrapper.isGratuity(), true, errorLog, elogger);
+////                            return debtFenix.subtract(invoiceSap);
+//                            // criar invoice com a diferença entre debtFenix e invoiceDebtSap (se for propina aumentar a dívida no sap)
+//                            //passar data actual (o valor do evento mudou, não dá para saber quando, vamos assumir que mudou qd foi detectada essa diferença)
+//                        } else {
+////                             diminuir divida no sap e credit note da diferença na última factura existente
+////                            se o valor pago nesta factura for superior à nova dívida, o que fazer? terá que existir nota crédito no fenix -> sim
+////                            logError(event, errorLog, elogger, "A dívida no Fénix é inferior à dívida registada no SAP");
+//                            debtResult = sapEvent.registerCredit(eventWrapper.event, invoiceSap.subtract(debtFenix),
+//                                    eventWrapper.isGratuity(), errorLog, elogger);
+////                            System.out.println("Ia registar abate à dívida?? " + eventWrapper.event.getExternalId()
+////                                    + " Valor dívida no Fénix: " + debtFenix + " - Valor dívida SAP: " + invoiceSap);
+//                        }
                     }
                 }
 
@@ -184,51 +181,32 @@ public class EventProcessor {
                     DebtInterestCalculator calculator = event.getDebtInterestCalculator(new DateTime());
                     List<Payment> payments = calculator.getPayments().collect(Collectors.toList());
                     for (Payment payment : payments) {
-                        if (payment.getAmount().intValue() != 0 && payment.isForDebt()
-                                && payment.getDate().isAfter(EventWrapper.SAP_TRANSACTIONS_THRESHOLD)
-                                && !sapEvent.hasPayment(payment.getId())) {
-                            boolean result = sapEvent.registerPayment(clientMap, payment, errorLog, elogger);
+                        if (payment.isForDebt() && payment.getAmount().compareTo(BigDecimal.ZERO) > 1
+                                && !sapEvent.hasPayment(payment.getId())
+                                && payment.getDate().isAfter(EventWrapper.SAP_TRANSACTIONS_THRESHOLD)) {
+                            boolean result = sapEvent.registerPayment(payment, errorLog, elogger);
                             if (!result) {
                                 return;
                             }
                         }
                     }
 
-                    //Exemptions!!
-                    //System.out.println("está a validar isenções");
-                    Money exemptionsAmount = new Money(calculator.getDebtExemptionAmount());
-                    if (exemptionsAmount.greaterThan(sapEvent.getCreditAmount())) {
-                        boolean result = sapEvent.registerCredit(clientMap, eventWrapper.event,
-                                exemptionsAmount.subtract(sapEvent.getCreditAmount()), eventWrapper.isGratuity(), errorLog,
-                                elogger);
-                        if (!result) {
-                            return;
+                    //Exemptions                    
+                    for (CreditEntry creditEntry : calculator.getCreditEntries()) {
+                        if (creditEntry.isForDebt() && creditEntry.getAmount().compareTo(BigDecimal.ZERO) > 1
+                                && !sapEvent.hasCredit(creditEntry.getId())
+                                && creditEntry.getDate().isAfter(EventWrapper.SAP_TRANSACTIONS_THRESHOLD)) {
+                            boolean result =
+                                    sapEvent.registerCredit(event, creditEntry, eventWrapper.isGratuity(), errorLog, elogger);
+                            if (!result) {
+                                return;
+                            }
                         }
-                    } else if (exemptionsAmount.lessThan(sapEvent.getCreditAmount())) {
-
-                        //TODO foram apagadas isenções?
-                        System.out.println("No evento " + event.getExternalId() + " o valor das isenções no fénix é de: "
-                                + exemptionsAmount + " e no SAP é: " + sapEvent.getCreditAmount());
-
-                        //(valor da divida no fenix - isenção fenix) tem de ser igual ao (valor das facturas sap - valor dos creditos)
-//                        Money finalFenixDebt = eventWrapper.debt.subtract(exemptionsAmount);
-//                        Money finalSapDebt = sapEvent.getInvoiceAmount().subtract(sapEvent.getCreditAmount());
-//
-//                        // se o valor da diferença for positivo que dizer que é preciso lançar dívida, caso contrário está tudo certo
-//                        Money invoiceValue = finalFenixDebt.subtract(finalSapDebt);
-//                        if (invoiceValue.isPositive()) {
-//                            boolean result = sapEvent.registerInvoice(clientMap, invoiceValue, eventWrapper.event,
-//                                    eventWrapper.isGratuity(), true, errorLog, elogger);
-//                            if (!result) {
-//                                return;
-//                            }
-//                        }
                     }
 
-                    //System.out.println("Reimbursements");                    
                     Money sapReimbursements = sapEvent.getReimbursementsAmount();
                     if (eventWrapper.reimbursements.greaterThan(sapReimbursements)) {
-                        boolean result = sapEvent.registerReimbursement(clientMap, eventWrapper.event,
+                        boolean result = sapEvent.registerReimbursement(eventWrapper.event,
                                 eventWrapper.reimbursements.subtract(sapReimbursements), errorLog, elogger);
                         if (!result) {
                             return;

@@ -108,6 +108,9 @@ public class Utils {
     }
 
     public static boolean validate(final ErrorLogConsumer consumer, final Event event) {
+        if (event.isCancelled()) {
+            return false;
+        }
         final String eventDescription;
         try {
             eventDescription = event.getDescription().toString();
@@ -119,10 +122,10 @@ public class Utils {
         try {
             originalAmountToPay = event.getOriginalAmountToPay();
         } catch (final DomainException ex) {
-            logError(consumer, "Unable to Determine Amount", event, null, "", null, null, null, null, event);
+            logError(consumer, "Unable to Determine Amount: " + ex.getMessage(), event, null, "", null, null, null, null, event);
             return false;
         } catch (final NullPointerException ex) {
-            logError(consumer, "Unable to Determine Amount", event, null, "", null, null, null, null, event);
+            logError(consumer, "Unable to Determine Amount: " + ex.getMessage(), event, null, "", null, null, null, null, event);
             return false;
         }
 
@@ -178,7 +181,7 @@ public class Utils {
             return false;
         }
 
-        final BigDecimal amount = event.getOriginalAmountToPay().getAmount();
+        final BigDecimal amount = originalAmountToPay.getAmount();
         //final BigDecimal amount = event.getOriginalAmountToPay().getAmount();
         if (amount.signum() <= 0) {
             if (event.isCancelled()) {
@@ -455,7 +458,7 @@ public class Utils {
         if (in == null) {
             return "";
         }
-        final String out = StringNormalizer.normalizeAndRemoveAccents(in).toUpperCase();
+        final String out = StringNormalizer.normalizePreservingCapitalizedLetters(in);
         return out.length() > maxSize ? out.substring(0, maxSize) : out;
     }
 

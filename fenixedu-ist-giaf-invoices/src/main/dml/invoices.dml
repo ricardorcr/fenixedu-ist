@@ -10,6 +10,7 @@ class SapRequest {
 	String documentNumber;
 	String sapDocumentNumber;
 	String clientId;
+	String creditId;
 	Money value;
 	SapRequestType requestType;
 	DateTime whenSent;
