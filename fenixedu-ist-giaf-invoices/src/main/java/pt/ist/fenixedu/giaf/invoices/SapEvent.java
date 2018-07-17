@@ -726,17 +726,22 @@ public class SapEvent {
         boolean changed = false;
 
         if (sr.getRequestType() == SapRequestType.DEBT) {
-            JsonObject metadata = data.get("workingDocument").getAsJsonObject().get("debtMetadata").getAsJsonObject();
+            JsonObject workingDocument = data.get("workingDocument").getAsJsonObject();
+            String metadata = workingDocument.get("debtMetadata").getAsString();
+            String stripMetadata = metadata.replace("\\", "");
+            JsonObject metadataJson = new JsonParser().parse(stripMetadata).getAsJsonObject();
 
-            LocalDate startDate = LocalDate.parse(metadata.get("START_DATE").getAsString(), localDateFormatter);
+            LocalDate startDate = LocalDate.parse(metadataJson.get("START_DATE").getAsString(), localDateFormatter);
             if (startDate.isBefore(now)) {
-                metadata.addProperty("START_DATE", now.toString("yyyy-MM-dd"));
+                metadata = metadata.replace(metadataJson.get("START_DATE").getAsString(), now.toString("yyyy-MM-dd"));
+                workingDocument.addProperty("debtMetadata", metadata);
                 changed = true;
             }
 
-            LocalDate endDate = LocalDate.parse(metadata.get("END_DATE").getAsString(), localDateFormatter);
+            LocalDate endDate = LocalDate.parse(metadataJson.get("END_DATE").getAsString(), localDateFormatter);
             if (endDate.isBefore(now)) {
-                metadata.addProperty("END_DATE", now.toString("yyyy-MM-dd"));
+                metadata = metadata.replace(metadataJson.get("END_DATE").getAsString(), now.toString("yyyy-MM-dd"));
+                workingDocument.addProperty("debtMetadata", metadata);
                 changed = true;
             }
         }
