@@ -65,9 +65,9 @@ public class SapEvent {
     private static final int MAX_SIZE_ADDRESS = 100;
     private static final int MAX_SIZE_CITY = 50;
     private static final int MAX_SIZE_REGION = 50;
+    private static final int MAX_SIZE_POSTAL_CODE = 20;
     private static final DateTimeFormatter localDateFormatter =
             new DateTimeFormatterFactory("yyyy-MM-dd").createDateTimeFormatter();
-
 
     private final Comparator<SapEventEntry> DOCUMENT_NUMBER_COMPARATOR = new Comparator<SapEventEntry>() {
         @Override
@@ -257,6 +257,7 @@ public class SapEvent {
                     sapRequest.setSapDocumentFile(new SapDocumentFile(sanitize(sapDocumentNumber) + ".pdf",
                             Base64.getDecoder().decode(docResult.get("documentBase64").getAsString())));
                 }
+                sapRequest.setSapDocumentNumber(sapDocumentNumber);
                 sapRequest.setIntegrated(true);
                 addSapEntry(sapRequest);
             } else {
@@ -747,8 +748,7 @@ public class SapEvent {
         }
 
         if (sr.getRequestType() == SapRequestType.INVOICE || sr.getRequestType() == SapRequestType.DEBT
-                || sr.getRequestType() == SapRequestType.CREDIT
-                || sr.getRequestType() == SapRequestType.INVOICE_INTEREST
+                || sr.getRequestType() == SapRequestType.CREDIT || sr.getRequestType() == SapRequestType.INVOICE_INTEREST
                 || sr.getRequestType() == SapRequestType.REIMBURSEMENT || sr.getRequestType() == SapRequestType.ADVANCEMENT) {
             data.get("workingDocument").getAsJsonObject().addProperty("documentDate", new DateTime().toString(DT_FORMAT));
             changed = true;
@@ -1014,20 +1014,23 @@ public class SapEvent {
         clientData.addProperty("accountId", "STUDENT");
         clientData.addProperty("companyName", person.getName());
         clientData.addProperty("clientId", clientId);
-        clientData.addProperty("country",
-                person.getCountryOfResidence() != null ? person.getCountryOfResidence().getCode() : "PT");
+        //country must be the same as the fiscal country
+        clientData.addProperty("country", clientId.substring(0, 2));
 
         PhysicalAddress physicalAddress = Utils.toAddress(person);
-        clientData.addProperty("street", physicalAddress != null ? Utils.limitFormat(MAX_SIZE_ADDRESS,
-                physicalAddress.getAddress()) : MORADA_DESCONHECIDO);
+        clientData.addProperty("street",
+                physicalAddress != null && !Strings.isNullOrEmpty(physicalAddress.getAddress().trim()) ? Utils
+                        .limitFormat(MAX_SIZE_ADDRESS, physicalAddress.getAddress()) : MORADA_DESCONHECIDO);
 
-        String city = Utils.limitFormat(MAX_SIZE_CITY, person.getDistrictSubdivisionOfResidence());
+        String city = Utils.limitFormat(MAX_SIZE_CITY, person.getDistrictSubdivisionOfResidence()).trim();
         clientData.addProperty("city", !Strings.isNullOrEmpty(city) ? city : MORADA_DESCONHECIDO);
 
-        String region = Utils.limitFormat(MAX_SIZE_REGION, person.getDistrictOfResidence());
+        String region = Utils.limitFormat(MAX_SIZE_REGION, person.getDistrictOfResidence()).trim();
         clientData.addProperty("region", !Strings.isNullOrEmpty(region) ? region : MORADA_DESCONHECIDO);
 
-        clientData.addProperty("postalCode", !Strings.isNullOrEmpty(person.getAreaCode()) ? person.getAreaCode() : "0000-000");
+        String postalCode = Utils.limitFormat(MAX_SIZE_POSTAL_CODE, person.getAreaCode()).trim();
+        clientData.addProperty("postalCode", !Strings.isNullOrEmpty(postalCode) ? postalCode : "0000-000");
+
         clientData.addProperty("vatNumber", clientId);
         clientData.addProperty("fiscalCountry", clientId.substring(0, 2));
         clientData.addProperty("nationality", person.getCountry().getCode());
@@ -1154,18 +1157,23 @@ public class SapEvent {
         }
     }
 
-    private boolean checkDocumentsStatus(JsonObject result, Event event, ErrorLogConsumer errorLog, EventLogger elogger,
-            String action) {
+    private boolean checkDocumentsStatus(JsonObject result, SapRequest sapRequest, Event event, ErrorLogConsumer errorLog,
+            EventLogger elogger, String action) {
+        StringBuilder errorMessages = new StringBuilder();
+
         JsonArray jsonArray = result.getAsJsonArray("documents");
         boolean checkStatus = true;
         for (int iter = 0; iter < jsonArray.size(); iter++) {
             JsonObject json = jsonArray.get(iter).getAsJsonObject();
             if (!"S".equals(json.get("status").getAsString())) {
                 checkStatus = false;
-                logError(event, errorLog, elogger, json.get("errorDescription").getAsString(),
-                        json.get("documentNumber").getAsString(), action);
+                String errorMessage = json.get("errorDescription").getAsString();
+                logError(event, errorLog, elogger, errorMessage, json.get("documentNumber").getAsString(), action);
+                errorMessages.append(errorMessage);
+                errorMessages.append("#");
             }
         }
+        sapRequest.setIntegrationMessage(errorMessages.toString());
         return checkStatus;
     }
 

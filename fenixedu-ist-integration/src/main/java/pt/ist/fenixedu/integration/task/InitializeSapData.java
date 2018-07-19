@@ -31,7 +31,7 @@ public class InitializeSapData extends CustomTask {
     private boolean needsProcessing(final Event event) {
         try {
             final ExecutionYear executionYear = Utils.executionYearOf(event);
-            return !event.isCancelled()
+            return event.getSapRequestSet().isEmpty() && !event.isCancelled()
                     && (!executionYear.isBefore(startYear)
                             || (event instanceof PhdGratuityEvent && !executionYear.isBefore(SAP_3RD_CYCLE_THRESHOLD)))
                     && (!event.getAccountingTransactionsSet().isEmpty() || !event.getExemptionsSet().isEmpty());
@@ -66,6 +66,7 @@ public class InitializeSapData extends CustomTask {
     }
 
     public void process(final Event event) {
+        taskLog("Processing event: %s\n", event.getExternalId());
         final DebtInterestCalculator debtInterestCalculator = event.getDebtInterestCalculator(LAST_DAY);
         final Money amountPayed = processPayments(event, debtInterestCalculator);
         processExemptions(event, amountPayed, debtInterestCalculator);
@@ -164,7 +165,7 @@ public class InitializeSapData extends CustomTask {
                 clientId = ClientMap.uVATNumberFor(event.getPerson());
             } else {
                 clientId = event.getParty().getExternalId();
-                taskLog("Dívida de empresa!! - %s\n", clientId);
+                //taskLog("Dívida de empresa!! - %s\n", clientId);
                 return;
             }
 
@@ -214,7 +215,7 @@ public class InitializeSapData extends CustomTask {
                 clientId = ClientMap.uVATNumberFor(event.getPerson());
             } else {
                 clientId = event.getParty().getExternalId();
-                taskLog("Dívida de empresa!! - %s\n", clientId);
+                //taskLog("Dívida de empresa!! - %s\n", clientId);
                 return;
             }
             final SapRequest sapRequest = new SapRequest(event, clientId, amountToRegister, "NR0", SapRequestType.REIMBURSEMENT,
