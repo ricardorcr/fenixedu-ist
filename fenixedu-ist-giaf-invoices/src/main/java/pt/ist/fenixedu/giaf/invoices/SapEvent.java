@@ -65,9 +65,9 @@ public class SapEvent {
     private static final int MAX_SIZE_ADDRESS = 100;
     private static final int MAX_SIZE_CITY = 50;
     private static final int MAX_SIZE_REGION = 50;
+    private static final int MAX_SIZE_POSTAL_CODE = 20;
     private static final DateTimeFormatter localDateFormatter =
             new DateTimeFormatterFactory("yyyy-MM-dd").createDateTimeFormatter();
-
 
     private final Comparator<SapEventEntry> DOCUMENT_NUMBER_COMPARATOR = new Comparator<SapEventEntry>() {
         @Override
@@ -189,7 +189,7 @@ public class SapEvent {
         JsonObject result = sendDataToSap(sapRequest, data);
 
         if (result.get("exception") == null) {
-            boolean docIsIntregrated = checkDocumentsStatus(result, event, errorLog, elogger, "invoice");
+            boolean docIsIntregrated = checkDocumentsStatus(result, sapRequest, event, errorLog, elogger, "invoice");
             checkClientStatus(result, event, errorLog, elogger, "invoice", data);
 
             if (docIsIntregrated) {
@@ -246,7 +246,8 @@ public class SapEvent {
         JsonObject result = sendDataToSap(sapRequest, data);
 
         if (result.get("exception") == null) {
-            boolean docIsIntregrated = checkDocumentsStatus(result, event, errorLog, elogger, "paymentFromAdvancement");
+            boolean docIsIntregrated =
+                    checkDocumentsStatus(result, sapRequest, event, errorLog, elogger, "paymentFromAdvancement");
             checkClientStatus(result, event, errorLog, elogger, "paymentFromAdvancement", data);
 
             if (docIsIntregrated) {
@@ -257,6 +258,7 @@ public class SapEvent {
                     sapRequest.setSapDocumentFile(new SapDocumentFile(sanitize(sapDocumentNumber) + ".pdf",
                             Base64.getDecoder().decode(docResult.get("documentBase64").getAsString())));
                 }
+                sapRequest.setSapDocumentNumber(sapDocumentNumber);
                 sapRequest.setIntegrated(true);
                 addSapEntry(sapRequest);
             } else {
@@ -281,7 +283,7 @@ public class SapEvent {
         JsonObject result = sendDataToSap(sapRequest, data);
 
         if (result.get("exception") == null) {
-            boolean docIsIntregrated = checkDocumentsStatus(result, event, errorLog, elogger, "debt");
+            boolean docIsIntregrated = checkDocumentsStatus(result, sapRequest, event, errorLog, elogger, "debt");
             checkClientStatus(result, event, errorLog, elogger, "debt", data);
 
             if (docIsIntregrated) {
@@ -365,7 +367,7 @@ public class SapEvent {
         JsonObject result = sendDataToSap(sapRequest, data);
 
         if (result.get("exception") == null) {
-            boolean docIsIntregrated = checkDocumentsStatus(result, event, errorLog, elogger, "debtCredit");
+            boolean docIsIntregrated = checkDocumentsStatus(result, sapRequest, event, errorLog, elogger, "debtCredit");
             checkClientStatus(result, event, errorLog, elogger, "debtCredit", data);
 
             if (docIsIntregrated) {
@@ -462,7 +464,7 @@ public class SapEvent {
         JsonObject result = sendDataToSap(sapRequest, data);
 
         if (result.get("exception") == null) {
-            boolean docIsIntregrated = checkDocumentsStatus(result, event, errorLog, elogger, "credit");
+            boolean docIsIntregrated = checkDocumentsStatus(result, sapRequest, event, errorLog, elogger, "credit");
             checkClientStatus(result, event, errorLog, elogger, "credit", data);
 
             if (docIsIntregrated) {
@@ -502,7 +504,7 @@ public class SapEvent {
         JsonObject result = sendDataToSap(sapRequest, data);
 
         if (result.get("exception") == null) {
-            boolean docIsIntregrated = checkDocumentsStatus(result, event, errorLog, elogger, "reimbursement");
+            boolean docIsIntregrated = checkDocumentsStatus(result, sapRequest, event, errorLog, elogger, "reimbursement");
             checkClientStatus(result, event, errorLog, elogger, "reimbursement", data);
 
             if (docIsIntregrated) {
@@ -610,7 +612,8 @@ public class SapEvent {
         boolean successful = true;
 
         if (result.get("exception") == null) {
-            boolean docIsIntregrated = checkDocumentsStatus(result, transactionDetail.getEvent(), errorLog, elogger, "payment");
+            boolean docIsIntregrated =
+                    checkDocumentsStatus(result, sapRequest, transactionDetail.getEvent(), errorLog, elogger, "payment");
             checkClientStatus(result, transactionDetail.getEvent(), errorLog, elogger, "payment", data);
 
             if (docIsIntregrated) {
@@ -656,7 +659,7 @@ public class SapEvent {
 
         if (result.get("exception") == null) {
             boolean docIsIntregrated =
-                    checkDocumentsStatus(result, transactionDetail.getEvent(), errorLog, elogger, "advancement");
+                    checkDocumentsStatus(result, sapRequest, transactionDetail.getEvent(), errorLog, elogger, "advancement");
             checkClientStatus(result, transactionDetail.getEvent(), errorLog, elogger, "advancement", data);
 
             if (docIsIntregrated) {
@@ -695,7 +698,7 @@ public class SapEvent {
                 JsonObject result = sendDataToSap(sr, data);
                 if (result.get("exception") == null) {
                     boolean docIsIntregrated =
-                            checkDocumentsStatus(result, event, errorLog, elogger, sr.getRequestType().toString());
+                            checkDocumentsStatus(result, sr, event, errorLog, elogger, sr.getRequestType().toString());
                     checkClientStatus(result, event, errorLog, elogger, sr.getRequestType().toString(), data);
 
                     if (docIsIntregrated) {
@@ -747,8 +750,7 @@ public class SapEvent {
         }
 
         if (sr.getRequestType() == SapRequestType.INVOICE || sr.getRequestType() == SapRequestType.DEBT
-                || sr.getRequestType() == SapRequestType.CREDIT
-                || sr.getRequestType() == SapRequestType.INVOICE_INTEREST
+                || sr.getRequestType() == SapRequestType.CREDIT || sr.getRequestType() == SapRequestType.INVOICE_INTEREST
                 || sr.getRequestType() == SapRequestType.REIMBURSEMENT || sr.getRequestType() == SapRequestType.ADVANCEMENT) {
             data.get("workingDocument").getAsJsonObject().addProperty("documentDate", new DateTime().toString(DT_FORMAT));
             changed = true;
@@ -1014,20 +1016,23 @@ public class SapEvent {
         clientData.addProperty("accountId", "STUDENT");
         clientData.addProperty("companyName", person.getName());
         clientData.addProperty("clientId", clientId);
-        clientData.addProperty("country",
-                person.getCountryOfResidence() != null ? person.getCountryOfResidence().getCode() : "PT");
+        //country must be the same as the fiscal country
+        clientData.addProperty("country", clientId.substring(0, 2));
 
         PhysicalAddress physicalAddress = Utils.toAddress(person);
-        clientData.addProperty("street", physicalAddress != null ? Utils.limitFormat(MAX_SIZE_ADDRESS,
-                physicalAddress.getAddress()) : MORADA_DESCONHECIDO);
+        clientData.addProperty("street",
+                physicalAddress != null && !Strings.isNullOrEmpty(physicalAddress.getAddress().trim()) ? Utils
+                        .limitFormat(MAX_SIZE_ADDRESS, physicalAddress.getAddress()) : MORADA_DESCONHECIDO);
 
-        String city = Utils.limitFormat(MAX_SIZE_CITY, person.getDistrictSubdivisionOfResidence());
+        String city = Utils.limitFormat(MAX_SIZE_CITY, person.getDistrictSubdivisionOfResidence()).trim();
         clientData.addProperty("city", !Strings.isNullOrEmpty(city) ? city : MORADA_DESCONHECIDO);
 
-        String region = Utils.limitFormat(MAX_SIZE_REGION, person.getDistrictOfResidence());
+        String region = Utils.limitFormat(MAX_SIZE_REGION, person.getDistrictOfResidence()).trim();
         clientData.addProperty("region", !Strings.isNullOrEmpty(region) ? region : MORADA_DESCONHECIDO);
 
-        clientData.addProperty("postalCode", !Strings.isNullOrEmpty(person.getAreaCode()) ? person.getAreaCode() : "0000-000");
+        String postalCode = Utils.limitFormat(MAX_SIZE_POSTAL_CODE, person.getAreaCode()).trim();
+        clientData.addProperty("postalCode", !Strings.isNullOrEmpty(postalCode) ? postalCode : "0000-000");
+
         clientData.addProperty("vatNumber", clientId);
         clientData.addProperty("fiscalCountry", clientId.substring(0, 2));
         clientData.addProperty("nationality", person.getCountry().getCode());
@@ -1154,18 +1159,23 @@ public class SapEvent {
         }
     }
 
-    private boolean checkDocumentsStatus(JsonObject result, Event event, ErrorLogConsumer errorLog, EventLogger elogger,
-            String action) {
+    private boolean checkDocumentsStatus(JsonObject result, SapRequest sapRequest, Event event, ErrorLogConsumer errorLog,
+            EventLogger elogger, String action) {
+        StringBuilder errorMessages = new StringBuilder();
+
         JsonArray jsonArray = result.getAsJsonArray("documents");
         boolean checkStatus = true;
         for (int iter = 0; iter < jsonArray.size(); iter++) {
             JsonObject json = jsonArray.get(iter).getAsJsonObject();
             if (!"S".equals(json.get("status").getAsString())) {
                 checkStatus = false;
-                logError(event, errorLog, elogger, json.get("errorDescription").getAsString(),
-                        json.get("documentNumber").getAsString(), action);
+                String errorMessage = json.get("errorDescription").getAsString();
+                logError(event, errorLog, elogger, errorMessage, json.get("documentNumber").getAsString(), action);
+                errorMessages.append(errorMessage);
+                errorMessages.append("#");
             }
         }
+        sapRequest.setIntegrationMessage(errorMessages.toString());
         return checkStatus;
     }
 

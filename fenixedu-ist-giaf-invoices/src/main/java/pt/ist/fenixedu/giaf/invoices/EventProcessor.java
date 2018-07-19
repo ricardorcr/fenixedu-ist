@@ -156,21 +156,21 @@ public class EventProcessor {
                         logError(event, errorLog, elogger, "A dívida no SAP é: " + invoiceSap.getAmountAsString()
                                 + " e no Fénix é: " + debtFenix.getAmountAsString());
 //                        if (debtFenix.greaterThan(invoiceSap)) {
-////                            logError(event, errorLog, elogger, "A dívida no Fénix é superior à dívida registada no SAP");
+//                            logError(event, errorLog, elogger, "A dívida no Fénix é superior à dívida registada no SAP");
 //                            debtResult = sapEvent.registerInvoice(debtFenix.subtract(invoiceSap), eventWrapper.event,
 //                                    eventWrapper.isGratuity(), true, errorLog, elogger);
-////                            return debtFenix.subtract(invoiceSap);
-//                            // criar invoice com a diferença entre debtFenix e invoiceDebtSap (se for propina aumentar a dívida no sap)
-//                            //passar data actual (o valor do evento mudou, não dá para saber quando, vamos assumir que mudou qd foi detectada essa diferença)
+//                            return debtFenix.subtract(invoiceSap);
+                            // criar invoice com a diferença entre debtFenix e invoiceDebtSap (se for propina aumentar a dívida no sap)
+                            //passar data actual (o valor do evento mudou, não dá para saber quando, vamos assumir que mudou qd foi detectada essa diferença)
 //                        } else {
-////                             diminuir divida no sap e credit note da diferença na última factura existente
-////                            se o valor pago nesta factura for superior à nova dívida, o que fazer? terá que existir nota crédito no fenix -> sim
-////                            logError(event, errorLog, elogger, "A dívida no Fénix é inferior à dívida registada no SAP");
+//                             diminuir divida no sap e credit note da diferença na última factura existente
+//                            se o valor pago nesta factura for superior à nova dívida, o que fazer? terá que existir nota crédito no fenix -> sim
+//                            logError(event, errorLog, elogger, "A dívida no Fénix é inferior à dívida registada no SAP");
 //                            debtResult = sapEvent.registerCredit(eventWrapper.event, invoiceSap.subtract(debtFenix),
 //                                    eventWrapper.isGratuity(), errorLog, elogger);
-////                            System.out.println("Ia registar abate à dívida?? " + eventWrapper.event.getExternalId()
-////                                    + " Valor dívida no Fénix: " + debtFenix + " - Valor dívida SAP: " + invoiceSap);
+//                            logError(event, errorLog, elogger, "A dívida no SAP é maior que a dívida no Fénix!");
 //                        }
+                        debtResult = false;
                     }
                 }
 
