@@ -62,6 +62,7 @@ public class SapEvent {
 
     private static final String DT_FORMAT = "yyyy-MM-dd HH:mm:ss";
     private static final String MORADA_DESCONHECIDO = "Desconhecido";
+    private static final String EMPTY_JSON = "{}";
     private static final int MAX_SIZE_ADDRESS = 100;
     private static final int MAX_SIZE_CITY = 50;
     private static final int MAX_SIZE_REGION = 50;
@@ -189,8 +190,9 @@ public class SapEvent {
         JsonObject result = sendDataToSap(sapRequest, data);
 
         if (result.get("exception") == null) {
-            boolean docIsIntregrated = checkDocumentsStatus(result, sapRequest, event, errorLog, elogger, "invoice");
-            checkClientStatus(result, event, errorLog, elogger, "invoice", data);
+            boolean docIsIntregrated =
+                    checkDocumentsStatus(result, sapRequest, event, errorLog, elogger, SapRequestType.INVOICE.name());
+            checkClientStatus(result, event, errorLog, elogger, "invoice", data, sapRequest);
 
             if (docIsIntregrated) {
                 String sapDocumentNumber = getSapDocumentNumber(result, documentNumber);
@@ -203,6 +205,7 @@ public class SapEvent {
 
                 sapRequest.setSapDocumentNumber(sapDocumentNumber);
                 sapRequest.setIntegrated(true);
+                sapRequest.setIntegrationMessage(EMPTY_JSON);
                 addSapEntry(sapRequest);
 
                 // if there are amounts in advancement we need to register them in the new invoice
@@ -214,7 +217,8 @@ public class SapEvent {
                 return false;
             }
         } else {
-            logError(event, errorLog, elogger, result.get("exception").getAsString(), documentNumber, "invoice");
+            logError(event, errorLog, elogger, result.get("exception").getAsString(), documentNumber,
+                    SapRequestType.INVOICE.name(), sapRequest);
             return false;
         }
         return true;
@@ -247,8 +251,8 @@ public class SapEvent {
 
         if (result.get("exception") == null) {
             boolean docIsIntregrated =
-                    checkDocumentsStatus(result, sapRequest, event, errorLog, elogger, "paymentFromAdvancement");
-            checkClientStatus(result, event, errorLog, elogger, "paymentFromAdvancement", data);
+                    checkDocumentsStatus(result, sapRequest, event, errorLog, elogger, "PaymentFromAdvancement");
+            checkClientStatus(result, event, errorLog, elogger, "paymentFromAdvancement", data, sapRequest);
 
             if (docIsIntregrated) {
                 String sapDocumentNumber = getSapDocumentNumber(result, documentNumber);
@@ -260,12 +264,14 @@ public class SapEvent {
                 }
                 sapRequest.setSapDocumentNumber(sapDocumentNumber);
                 sapRequest.setIntegrated(true);
+                sapRequest.setIntegrationMessage(EMPTY_JSON);
                 addSapEntry(sapRequest);
             } else {
                 return false;
             }
         } else {
-            logError(event, errorLog, elogger, result.get("exception").getAsString(), documentNumber, "paymentFromAdvancement");
+            logError(event, errorLog, elogger, result.get("exception").getAsString(), documentNumber, "PaymentFromAdvancement",
+                    sapRequest);
             return false;
         }
         return true;
@@ -283,20 +289,23 @@ public class SapEvent {
         JsonObject result = sendDataToSap(sapRequest, data);
 
         if (result.get("exception") == null) {
-            boolean docIsIntregrated = checkDocumentsStatus(result, sapRequest, event, errorLog, elogger, "debt");
-            checkClientStatus(result, event, errorLog, elogger, "debt", data);
+            boolean docIsIntregrated =
+                    checkDocumentsStatus(result, sapRequest, event, errorLog, elogger, SapRequestType.DEBT.name());
+            checkClientStatus(result, event, errorLog, elogger, "debt", data, sapRequest);
 
             if (docIsIntregrated) {
                 String sapDocumentNumber = getSapDocumentNumber(result, documentNumber);
                 sapRequest.setSapDocumentNumber(sapDocumentNumber);
                 sapRequest.setIntegrated(true);
+                sapRequest.setIntegrationMessage(EMPTY_JSON);
                 addSapEntry(sapRequest);
                 return true;
             } else {
                 return false;
             }
         } else {
-            logError(event, errorLog, elogger, result.get("exception").getAsString(), documentNumber, "debt");
+            logError(event, errorLog, elogger, result.get("exception").getAsString(), documentNumber, SapRequestType.DEBT.name(),
+                    sapRequest);
             return false;
         }
     }
@@ -367,20 +376,21 @@ public class SapEvent {
         JsonObject result = sendDataToSap(sapRequest, data);
 
         if (result.get("exception") == null) {
-            boolean docIsIntregrated = checkDocumentsStatus(result, sapRequest, event, errorLog, elogger, "debtCredit");
-            checkClientStatus(result, event, errorLog, elogger, "debtCredit", data);
+            boolean docIsIntregrated = checkDocumentsStatus(result, sapRequest, event, errorLog, elogger, "DebtCredit");
+            checkClientStatus(result, event, errorLog, elogger, "debtCredit", data, sapRequest);
 
             if (docIsIntregrated) {
                 String sapDocumentNumber = getSapDocumentNumber(result, documentNumber);
                 sapRequest.setSapDocumentNumber(sapDocumentNumber);
                 sapRequest.setIntegrated(true);
+                sapRequest.setIntegrationMessage(EMPTY_JSON);
                 addSapEntry(sapRequest);
                 return true;
             } else {
                 return false;
             }
         } else {
-            logError(event, errorLog, elogger, result.get("exception").getAsString(), documentNumber, "debtCredit");
+            logError(event, errorLog, elogger, result.get("exception").getAsString(), documentNumber, "DebtCredit", sapRequest);
             return false;
         }
     }
@@ -464,8 +474,9 @@ public class SapEvent {
         JsonObject result = sendDataToSap(sapRequest, data);
 
         if (result.get("exception") == null) {
-            boolean docIsIntregrated = checkDocumentsStatus(result, sapRequest, event, errorLog, elogger, "credit");
-            checkClientStatus(result, event, errorLog, elogger, "credit", data);
+            boolean docIsIntregrated =
+                    checkDocumentsStatus(result, sapRequest, event, errorLog, elogger, SapRequestType.CREDIT.name());
+            checkClientStatus(result, event, errorLog, elogger, "credit", data, sapRequest);
 
             if (docIsIntregrated) {
                 String sapDocumentNumber = getSapDocumentNumber(result, documentNumber);
@@ -478,13 +489,15 @@ public class SapEvent {
 
                 sapRequest.setSapDocumentNumber(sapDocumentNumber);
                 sapRequest.setIntegrated(true);
+                sapRequest.setIntegrationMessage(EMPTY_JSON);
                 addSapEntry(sapRequest);
                 return true;
             } else {
                 return false;
             }
         } else {
-            logError(event, errorLog, elogger, result.get("exception").getAsString(), documentNumber, "credit");
+            logError(event, errorLog, elogger, result.get("exception").getAsString(), documentNumber,
+                    SapRequestType.CREDIT.name(), sapRequest);
             return false;
         }
     }
@@ -504,8 +517,9 @@ public class SapEvent {
         JsonObject result = sendDataToSap(sapRequest, data);
 
         if (result.get("exception") == null) {
-            boolean docIsIntregrated = checkDocumentsStatus(result, sapRequest, event, errorLog, elogger, "reimbursement");
-            checkClientStatus(result, event, errorLog, elogger, "reimbursement", data);
+            boolean docIsIntregrated =
+                    checkDocumentsStatus(result, sapRequest, event, errorLog, elogger, SapRequestType.REIMBURSEMENT.name());
+            checkClientStatus(result, event, errorLog, elogger, "reimbursement", data, sapRequest);
 
             if (docIsIntregrated) {
                 String sapDocumentNumber = getSapDocumentNumber(result, documentNumber);
@@ -518,12 +532,14 @@ public class SapEvent {
 
                 sapRequest.setSapDocumentNumber(sapDocumentNumber);
                 sapRequest.setIntegrated(true);
+                sapRequest.setIntegrationMessage(EMPTY_JSON);
                 addSapEntry(sapRequest);
             } else {
                 return false;
             }
         } else {
-            logError(event, errorLog, elogger, result.get("exception").getAsString(), documentNumber, "reimbursement");
+            logError(event, errorLog, elogger, result.get("exception").getAsString(), documentNumber,
+                    SapRequestType.REIMBURSEMENT.name(), sapRequest);
             return false;
         }
         return true;
@@ -612,9 +628,10 @@ public class SapEvent {
         boolean successful = true;
 
         if (result.get("exception") == null) {
-            boolean docIsIntregrated =
-                    checkDocumentsStatus(result, sapRequest, transactionDetail.getEvent(), errorLog, elogger, "payment");
-            checkClientStatus(result, transactionDetail.getEvent(), errorLog, elogger, "payment", data);
+            boolean docIsIntregrated = checkDocumentsStatus(result, sapRequest, transactionDetail.getEvent(), errorLog, elogger,
+                    SapRequestType.PAYMENT.name());
+            checkClientStatus(result, transactionDetail.getEvent(), errorLog, elogger, SapRequestType.PAYMENT.name(), data,
+                    sapRequest);
 
             if (docIsIntregrated) {
                 String sapDocumentNumber = getSapDocumentNumber(result, "NP");
@@ -627,19 +644,20 @@ public class SapEvent {
 
                 sapRequest.setSapDocumentNumber(sapDocumentNumber);
                 sapRequest.setIntegrated(true);
+                sapRequest.setIntegrationMessage(EMPTY_JSON);
                 addSapEntry(sapRequest);
             } else {
                 if (hasPayment(transactionDetail.getExternalId())) {
                     //TODO já existe um pagamento feito com este id o que quer dizer que isto é um pagamento que se dividiu por n facturas e um deles deu erro
                     // este pagamento não vai voltar a ser processado e é preciso dar uma mensagem de erro diferente para isto ser corrigido manualmente
                     logError(transactionDetail.getEvent(), errorLog, elogger, "WARNING: one of multiple payments has failed!!!",
-                            documentNumber, "payment");
+                            documentNumber, SapRequestType.PAYMENT.name(), sapRequest);
                 }
                 successful = false;
             }
         } else {
             logError(transactionDetail.getEvent(), errorLog, elogger, result.get("exception").getAsString(), documentNumber,
-                    "payment");
+                    SapRequestType.PAYMENT.name(), sapRequest);
             successful = false;
         }
         sapRequest.setIntegrated(successful);
@@ -658,9 +676,9 @@ public class SapEvent {
         JsonObject result = sendDataToSap(sapRequest, data);
 
         if (result.get("exception") == null) {
-            boolean docIsIntregrated =
-                    checkDocumentsStatus(result, sapRequest, transactionDetail.getEvent(), errorLog, elogger, "advancement");
-            checkClientStatus(result, transactionDetail.getEvent(), errorLog, elogger, "advancement", data);
+            boolean docIsIntregrated = checkDocumentsStatus(result, sapRequest, transactionDetail.getEvent(), errorLog, elogger,
+                    SapRequestType.ADVANCEMENT.name());
+            checkClientStatus(result, transactionDetail.getEvent(), errorLog, elogger, "advancement", data, sapRequest);
 
             if (docIsIntregrated) {
                 String sapDocumentNumber = getSapDocumentNumber(result, documentNumber);
@@ -673,13 +691,14 @@ public class SapEvent {
 
                 sapRequest.setSapDocumentNumber(sapDocumentNumber);
                 sapRequest.setIntegrated(true);
+                sapRequest.setIntegrationMessage(EMPTY_JSON);
                 addSapEntry(sapRequest);
             } else {
                 return false;
             }
         } else {
             logError(transactionDetail.getEvent(), errorLog, elogger, result.get("exception").getAsString(), documentNumber,
-                    "advancement");
+                    SapRequestType.ADVANCEMENT.name(), sapRequest);
             return false;
         }
         return true;
@@ -699,7 +718,7 @@ public class SapEvent {
                 if (result.get("exception") == null) {
                     boolean docIsIntregrated =
                             checkDocumentsStatus(result, sr, event, errorLog, elogger, sr.getRequestType().toString());
-                    checkClientStatus(result, event, errorLog, elogger, sr.getRequestType().toString(), data);
+                    checkClientStatus(result, event, errorLog, elogger, sr.getRequestType().toString(), data, sr);
 
                     if (docIsIntregrated) {
                         String sapDocumentNumber = getSapDocumentNumber(result, sr.getDocumentNumber());
@@ -710,13 +729,14 @@ public class SapEvent {
                                     Base64.getDecoder().decode(docResult.get("documentBase64").getAsString())));
                         }
                         sr.setIntegrated(true);
+                        sr.setIntegrationMessage(EMPTY_JSON);
                         addSapEntry(sr);
                     } else {
                         return false;
                     }
                 } else {
                     logError(event, errorLog, elogger, result.get("exception").getAsString(), sr.getDocumentNumber(),
-                            sr.getRequestType().toString());
+                            sr.getRequestType().toString(), sr);
                     return false;
                 }
             }
@@ -782,12 +802,18 @@ public class SapEvent {
         } catch (Exception e) {
             e.printStackTrace();
             result = new JsonObject();
-            result.addProperty("exception", e.getMessage());
+            result.addProperty("exception", responseFromException(e));
             return result;
         }
         sapRequest.setWhenSent(new DateTime());
         sapRequest.setSent(true);
         return result;
+    }
+
+    private String responseFromException(final Throwable t) {
+        final Throwable cause = t.getCause();
+        final String message = t.getMessage();
+        return cause == null ? message : message + '\n' + responseFromException(cause);
     }
 
     private String getSapDocumentNumber(JsonObject result, String docNumber) {
@@ -1148,21 +1174,19 @@ public class SapEvent {
     }
 
     private void checkClientStatus(JsonObject result, Event event, ErrorLogConsumer errorLog, EventLogger elogger, String action,
-            JsonObject sentData) {
+            JsonObject sentData, SapRequest sr) {
         JsonArray jsonArray = result.getAsJsonArray("customers");
         for (int iter = 0; iter < jsonArray.size(); iter++) {
             JsonObject json = jsonArray.get(iter).getAsJsonObject();
             if (!"S".equals(json.get("status").getAsString())) {
                 logError(event, json.get("customerId").getAsString(), errorLog, elogger, json.get("returnMessage").getAsString(),
-                        action, sentData);
+                        action, sentData, sr);
             }
         }
     }
 
     private boolean checkDocumentsStatus(JsonObject result, SapRequest sapRequest, Event event, ErrorLogConsumer errorLog,
             EventLogger elogger, String action) {
-        StringBuilder errorMessages = new StringBuilder();
-
         JsonArray jsonArray = result.getAsJsonArray("documents");
         boolean checkStatus = true;
         for (int iter = 0; iter < jsonArray.size(); iter++) {
@@ -1170,12 +1194,9 @@ public class SapEvent {
             if (!"S".equals(json.get("status").getAsString())) {
                 checkStatus = false;
                 String errorMessage = json.get("errorDescription").getAsString();
-                logError(event, errorLog, elogger, errorMessage, json.get("documentNumber").getAsString(), action);
-                errorMessages.append(errorMessage);
-                errorMessages.append("#");
+                logError(event, errorLog, elogger, errorMessage, json.get("documentNumber").getAsString(), action, sapRequest);
             }
         }
-        sapRequest.setIntegrationMessage(errorMessages.toString());
         return checkStatus;
     }
 
@@ -1418,30 +1439,63 @@ public class SapEvent {
     }
 
     private void logError(Event event, String clientId, ErrorLogConsumer errorLog, EventLogger elogger, String returnMessage,
-            String action, JsonObject sentData) {
+            String action, JsonObject sentData, SapRequest sr) {
         errorLog.accept(event.getExternalId(), clientId, event.getPerson().getName(), "", "", returnMessage, "", "",
                 sentData.get("clientData").getAsJsonObject().get("fiscalCountry").getAsString(), clientId,
                 sentData.get("clientData").getAsJsonObject().get("street").getAsString(), "",
                 sentData.get("clientData").getAsJsonObject().get("postalCode").getAsString(), "", "", "", action);
         elogger.log("Pessoa %s: evento: %s %s %s %s %n", event.getPerson().getExternalId(), event.getExternalId(), clientId,
                 returnMessage, action);
+
+        //Write to SapRequest in json format
+        JsonObject errorMessage = new JsonObject();
+        errorMessage.addProperty("ID Evento", event.getExternalId());
+        errorMessage.addProperty("Utilizador", event.getPerson().getUsername());
+        errorMessage.addProperty("Nº Contribuinte", clientId);
+        errorMessage.addProperty("Nome", event.getPerson().getName());
+        errorMessage.addProperty("Mensagem", returnMessage);
+        errorMessage.addProperty("País Fiscal", sentData.get("clientData").getAsJsonObject().get("fiscalCountry").getAsString());
+        errorMessage.addProperty("Morada", sentData.get("clientData").getAsJsonObject().get("street").getAsString());
+        errorMessage.addProperty("Código Postal", sentData.get("clientData").getAsJsonObject().get("postalCode").getAsString());
+        errorMessage.addProperty("Tipo Documento", action);
+
+        JsonObject messages = null;
+        if (sr.getIntegrationMessage() == null) {
+            messages = new JsonObject();
+        } else {
+            messages = new JsonParser().parse(sr.getIntegrationMessage()).getAsJsonObject();
+        }
+        messages.add("Cliente", errorMessage);
+        sr.setIntegrationMessage(messages.toString());
     }
 
     private void logError(Event event, ErrorLogConsumer errorLog, EventLogger elogger, String errorMessage, String documentNumber,
-            String action) {
-        BigDecimal amount;
-        DebtCycleType cycleType;
-//        try {
-//            amount = Utils.calculateTotalDebtValue(event).getAmount();
-//            cycleType = Utils.cycleType(event);
-//        } catch (Exception ex) {
-        amount = null;
-        cycleType = null;
-//        }
+            String action, SapRequest sr) {
+        BigDecimal amount = null;
+        DebtCycleType cycleType = Utils.cycleType(event);
 
         errorLog.accept(event.getExternalId(), event.getPerson().getUsername(), event.getPerson().getName(),
                 amount == null ? "" : amount.toPlainString(), cycleType == null ? "" : cycleType.getDescription(), errorMessage,
                 "", "", "", "", "", "", "", "", "", documentNumber, action);
         elogger.log("%s: %s %s %s %n", event.getExternalId(), errorMessage, documentNumber, action);
+
+        //Write to SapRequest in json format
+        JsonObject returnMessage = new JsonObject();
+        returnMessage.addProperty("ID Evento", event.getExternalId());
+        returnMessage.addProperty("Utilizador", event.getPerson().getUsername());
+        returnMessage.addProperty("Nome", event.getPerson().getName());
+        returnMessage.addProperty("Ciclo", cycleType != null ? cycleType.getDescription() : "");
+        returnMessage.addProperty("Mensagem", errorMessage);
+        returnMessage.addProperty("Nº Documento", documentNumber);
+        returnMessage.addProperty("Tipo Documento", action);
+
+        JsonObject messages = null;
+        if (sr.getIntegrationMessage() == null) {
+            messages = new JsonObject();
+        } else {
+            messages = new JsonParser().parse(sr.getIntegrationMessage()).getAsJsonObject();
+        }
+        messages.add("Documento", returnMessage);
+        sr.setIntegrationMessage(messages.toString());
     }
 }

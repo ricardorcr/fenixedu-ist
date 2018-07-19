@@ -84,7 +84,7 @@ public class SyncFinancialInfoToSapTask extends CronTask {
 
         touch("Dumping error messages.");
         final ByteArrayOutputStream stream = new ByteArrayOutputStream();
-        errors.exportToXLSSheet(stream);
+        errors.exportToCSV(stream, "\t");
         final String subject = "Problemas no envio de informação para o SAP";
         final String body =
                 "Listagem atualizada com os problemas verificados na sincronização de informação financeira entre o Fénix e o SAP: "

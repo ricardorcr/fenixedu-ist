@@ -102,7 +102,7 @@ public class SapInvoiceController {
         final JsonObject result = new JsonObject();
         result.addProperty("id", sapRequest.getExternalId());
         result.addProperty("advancement", sapRequest.getAdvancement() == null ? null : sapRequest.getAdvancement().toPlainString());
-        result.addProperty("answer", sapRequest.getAnswer());
+        result.addProperty("integrationMessage", sapRequest.getIntegrationMessage());
         //result.addProperty("anulledRequest", sapRequest.getAnulledRequest());
         result.addProperty("clientId", sapRequest.getClientId());
         result.addProperty("documentNumber", sapRequest.getDocumentNumber());

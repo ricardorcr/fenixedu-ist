@@ -15,8 +15,6 @@ import org.fenixedu.academic.util.Money;
 import org.joda.time.DateTime;
 import org.joda.time.LocalDate;
 
-import pt.ist.fenixframework.FenixFramework;
-
 public class EventWrapper {
 
     public final static DateTime THRESHOLD = new DateTime(2015, 12, 1, 0, 0, 0, 0);
@@ -62,8 +60,7 @@ public class EventWrapper {
     public static Stream<Event> eventsToProcessSap(final ErrorLogConsumer consumer, final Stream<Event> eventStream,
             final Stream<AccountingTransactionDetail> txStream) {
         final Stream<Event> currentEvents =
-                Stream.of(FenixFramework.getDomainObject("1407400653357731"));
-//                eventStream.filter(EventWrapper::needsProcessingSap).filter(e -> Utils.validate(consumer, e));
+                eventStream.filter(EventWrapper::needsProcessingSap).filter(e -> Utils.validate(consumer, e));
 
         final int currentYear = Year.now().getValue();
         final Stream<Event> pastEvents = txStream.filter(d -> d.getWhenRegistered().getYear() == currentYear)

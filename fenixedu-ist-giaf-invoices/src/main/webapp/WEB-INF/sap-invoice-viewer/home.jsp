@@ -1,6 +1,6 @@
 <%--
 
-    Copyright © 2018 Instituto Superior Técnico
+    Copyright ï¿½ 2018 Instituto Superior Tï¿½cnico
 
     This file is part of FenixEdu IST GIAF Invoices.
 
@@ -202,7 +202,7 @@
     		});
     	});
     	jsonViewerRequest.showJSON(JSON.parse(item.request), -1, -1);
-    	jsonViewerResponse.showJSON(JSON.parse(item.answer), -1, -1);
+    	jsonViewerResponse.showJSON(JSON.parse(item.integrationMessage), -1, -1);
     }
     
     function requestPart(sapRequest) {
@@ -280,7 +280,7 @@
 //                        .append($('<td/>').text(sapRequest.whenSent))
 //                        .append($('<td/>').text(sapRequest.integrationMessage))
                         .append($('<td/>').text(sapRequest.clientId))
-//                        .append($('<td/>').text(sapRequest.answer))
+//                        .append($('<td/>').text(sapRequest.integrationMessage))
                         ;
 			    });
 			}
