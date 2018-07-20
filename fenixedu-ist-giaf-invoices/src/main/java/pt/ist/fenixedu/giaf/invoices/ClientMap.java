@@ -18,6 +18,7 @@ import com.google.common.base.Strings;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
+import eu.europa.ec.taxud.tin.algorithm.TINValid;
 import pt.ist.giaf.client.financialDocuments.ClientClient;
 
 public class ClientMap {
@@ -67,6 +68,11 @@ public class ClientMap {
     public static String uVATNumberFor(final Person person) {
         final Country country = person.getCountry();
         final String ssn = person.getSocialSecurityNumber();
+
+        if (ssn != null && ssn.length() > 2 && TINValid.checkTIN(ssn.substring(0, 2), ssn.substring(2)) == 0) {
+            return ssn;
+        }
+
         final String vat = toVatNumber(ssn);
         if (vat != null && isVatValidForPT(vat)) {
             return "PT" + vat;
