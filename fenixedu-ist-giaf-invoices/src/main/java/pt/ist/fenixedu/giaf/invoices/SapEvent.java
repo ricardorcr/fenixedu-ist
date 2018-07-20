@@ -954,9 +954,8 @@ public class SapEvent {
         if (endDate.isBefore(startDate)) {
             endDate = startDate;
         }
-        String metadata = String.format("{\"ANO_LECTIVO\":\"%s\", \"CURSO\":\"%s\", \"START_DATE\":\"%s\", \"END_DATE\":\"%s\"}",
-                executionYear.getName(), Utils.getDegreeAcronym(event), startDate.toString("yyyy-MM-dd"),
-                endDate.toString("yyyy-MM-dd"));
+        String metadata = String.format("{\"ANO_LECTIVO\":\"%s\", \"START_DATE\":\"%s\", \"END_DATE\":\"%s\"}",
+                executionYear.getName(), startDate.toString("yyyy-MM-dd"), endDate.toString("yyyy-MM-dd"));
         workDocument.addProperty("debtMetadata", metadata);
 
         json.add("workingDocument", workDocument);
