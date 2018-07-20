@@ -63,6 +63,11 @@
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
         </dependency>
+        <dependency>
+            <groupId>eu.europa.ec.taxud</groupId>
+            <artifactId>tin-algorithm</artifactId>
+            <version>5.2.2_PUBLIC</version>
+        </dependency>
     </dependencies>
 
     <repositories>
