@@ -109,6 +109,7 @@
             <th colspan="3" style="text-align: center;"><spring:message code="label.event.fine" text="Fine"/></th>
             <th colspan="3" style="text-align: center;"><spring:message code="label.event.interest" text="Interest"/></th>
             <th></th>
+            <th></th>
 		</tr>
 		<tr>
             <th><spring:message code="label.event.total" text="Total"/></th>
@@ -170,12 +171,21 @@
 		}
 	}
 
-    function repeatRequest(sapRequest) {
-        if (!sapRequest.integrated) {
-        	return '<form method="post" action="' + contextPath + '/sap-invoice-viewer/' + sapRequest.id + '/repeat">'
+    function syncEvent(eventId) {
+        return '<form method="post" action="' + contextPath + '/sap-invoice-viewer/' + eventId + '/sync">'
         	   + '${csrf.field()}'
         	   + '<button type="submit" class="btn btn-warning"><spring:message code="label.repeat.request" text="Repeat Request"/></button>'
-        	   + '</form>';
+        	   + '</form>'
+        	   ;
+    }
+
+    function deleteRequest(sapRequest) {
+        if (!sapRequest.integrated) {
+            return '<form method="post" action="' + contextPath + '/sap-invoice-viewer/' + sapRequest.id + '/delete">'
+               + '${csrf.field()}'
+               + '<button type="submit" class="btn btn-warning"><spring:message code="label.delete" text="Repeat Request"/></button>'
+               + '</form>'
+               ;
         }
     }
 
@@ -255,6 +265,7 @@
                 .append($('<td/>').text(event.interestExemptionAmount))
                 .append($('<td/>').text(event.paidInterestAmount))
                 .append($('<td/>').html(expandButton(i, hasSapRequests)))
+                .append($('<td/>').html(syncEvent(event.eventId)))
                 ;
 
 			if (hasSapRequests) {
@@ -290,7 +301,7 @@
 //                        .append($('<td/>').text(sapRequest.integrationMessage))
                         .append($('<td/>').text(sapRequest.clientId))
 //                        .append($('<td/>').text(sapRequest.integrationMessage))
-                        .append($('<td/>').html(repeatRequest(sapRequest)))
+                        .append($('<td/>').html(deleteRequest(sapRequest)))
                         ;
 			    });
 			}

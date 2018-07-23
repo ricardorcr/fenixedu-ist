@@ -64,8 +64,8 @@ public class SapInvoiceController {
         return "sap-invoice-viewer/home";
     }
 
-    @RequestMapping(value = "/{sapRequest}/{repeat}", method = RequestMethod.POST)
-    public String repeat(@PathVariable SapRequest sapRequest, final Model model) {
+    @RequestMapping(value = "/{event}/sync", method = RequestMethod.POST)
+    public String syncEvent(final @PathVariable Event event, final Model model) {
         final StringBuilder errors = new StringBuilder();
         final ErrorLogConsumer errorLogConsumer = new ErrorLogConsumer() {
 
@@ -93,10 +93,17 @@ public class SapInvoiceController {
                 errors.append(o);
             }
         };
-        EventProcessor.syncEventWithSap(errorLogConsumer, elogger, sapRequest.getEvent());
+        EventProcessor.syncEventWithSap(errorLogConsumer, elogger, event);
 
         model.addAttribute("errors", errors.toString());
-        return home(sapRequest.getEvent().getPerson().getUsername(), model);
+        return home(event.getPerson().getUsername(), model);
+    }
+
+    @RequestMapping(value = "/{sapRequest}/delete", method = RequestMethod.POST)
+    public String delete(final @PathVariable SapRequest sapRequest, final Model model) {
+        final Event event = sapRequest.getEvent();
+        sapRequest.delete();
+        return home(event.getPerson().getUsername(), model);
     }
 
     private JsonObject toJsonObject(final Event event, final DateTime when) {
