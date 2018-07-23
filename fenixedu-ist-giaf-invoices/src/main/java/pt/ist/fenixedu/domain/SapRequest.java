@@ -22,6 +22,17 @@ public class SapRequest extends SapRequest_Base {
         }
     };
 
+    public static final Comparator<SapRequest> DOCUMENT_NUMBER_COMPARATOR = new Comparator<SapRequest>() {
+        @Override
+        public int compare(final SapRequest sr1, final SapRequest sr2) {
+            final Integer i1 =
+                    sr1.getDocumentNumber() != null ? Integer.valueOf(sr1.getDocumentNumber().substring(2)) : Integer.valueOf(-1);
+            final Integer i2 = sr2.getDocumentNumber() != null ? Integer.valueOf(sr2.getDocumentNumber().substring(2)) : Integer
+                    .valueOf(-1);;
+            return i1.compareTo(i2);
+        }
+    };
+
     public SapRequest(Event event, String clientId, Money amount, String documentNumber, SapRequestType requestType,
             Money advancement,
             JsonObject request) {
