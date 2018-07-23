@@ -47,7 +47,6 @@ import org.fenixedu.academic.domain.accounting.events.dfa.DFACandidacyEvent;
 import org.fenixedu.academic.domain.accounting.events.gratuity.GratuityEvent;
 import org.fenixedu.academic.domain.accounting.events.gratuity.GratuityEventWithPaymentPlan;
 import org.fenixedu.academic.domain.accounting.events.insurance.InsuranceEvent;
-import org.fenixedu.academic.domain.contacts.PartyContact;
 import org.fenixedu.academic.domain.contacts.PhysicalAddress;
 import org.fenixedu.academic.domain.degreeStructure.CycleType;
 import org.fenixedu.academic.domain.exceptions.DomainException;
@@ -145,7 +144,7 @@ public class Utils {
                 logError(consumer, "No Country", event, person.getUsername(), "", country, person, null, null, event);
                 return false;
             }
-            final PhysicalAddress address = toAddress(person);
+            final PhysicalAddress address = toAddress(person, country.getCode());
             if (address == null) {
                 logError(consumer, "No Address", event, person.getUsername(), "", country, person, address, null, event);
                 return false;
@@ -205,17 +204,18 @@ public class Utils {
         return b.toString();
     }
 
-    public static PhysicalAddress toAddress(final Person person) {
-        PhysicalAddress address = person.getDefaultPhysicalAddress();
-        if (address == null) {
-            for (final PartyContact contact : person.getPartyContactsSet()) {
-                if (contact instanceof PhysicalAddress) {
-                    address = (PhysicalAddress) contact;
-                    break;
-                }
-            }
-        }
-        return address;
+    public static PhysicalAddress toAddress(final Person person, final String countryCode) {
+        return person.getPartyContactsSet().stream()
+            .filter(pc -> pc instanceof PhysicalAddress)
+            .map(pc -> (PhysicalAddress) pc)
+            .filter(a -> a.getCountryOfResidence() != null && countryCode.equals(a.getCountryOfResidence().getCode()))
+            .filter(a -> a.isActiveAndValid())
+            .sorted((a1, a2) -> {
+                boolean d1 = a1.getDefaultContact();
+                boolean d2 = a2.getDefaultContact();
+                return d1 && !d2 ? 1 : d2 && !d1 ? -1 : a1.getExternalId().compareTo(a2.getExternalId());
+            })
+            .findFirst().orElse(null);
     }
 
     public static String hackAreaCode(final String areaCode, final Country countryOfResidence, final Person person) {

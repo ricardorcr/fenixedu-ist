@@ -130,7 +130,7 @@ public class ClientMap {
         final String vat = uVATNumber.substring(2);
         final String vatCountry = uVATNumber.substring(0, 2);
 
-        final PhysicalAddress address = Utils.toAddress(person);
+        final PhysicalAddress address = Utils.toAddress(person, vatCountry);
         final String street = Utils.limitFormat(60, address.getAddress()).replace('\t', ' ');
         final String locality = Utils.limitFormat(35, address.getAreaOfAreaCode());
         final String postCode = Utils.hackAreaCode(address.getAreaCode(), address.getCountryOfResidence(), person);
