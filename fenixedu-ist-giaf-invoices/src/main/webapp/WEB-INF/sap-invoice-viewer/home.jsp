@@ -151,7 +151,6 @@
   </div>
 </div>
 
-
 <script type="text/javascript">
 	var events = ${events};
 	var contextPath = '<%= contextPath %>';
@@ -170,6 +169,15 @@
 			return '<spring:message code="label.no" text="No"/>';
 		}
 	}
+
+    function repeatRequest(sapRequest) {
+        if (!sapRequest.integrated) {
+        	return '<form method="post" action="' + contextPath + '/sap-invoice-viewer/' + sapRequest.id + '/repeat">'
+        	   + '${csrf.field()}'
+        	   + '<button type="submit" class="btn btn-warning"><spring:message code="label.repeat.request" text="Repeat Request"/></button>'
+        	   + '</form>';
+        }
+    }
 
     function sentPart(sapRequest) {
         if (sapRequest.sent) {
@@ -262,6 +270,7 @@
                     .append($('<th/>').text('<spring:message code="label.sapRequest.sapDocumentNumber" text="Sap Document Number"/>'))
                     .append($('<th/>').text('<spring:message code="label.sapRequest.request" text="Request / Response"/>'))
                     .append($('<th/>').text('<spring:message code="label.sapRequest.clientId" text="clientId"/>'))
+                    .append($('<th/>').text(''))
                     ;
 			    $('<tr id="eventDetailRow' + i + '" style="display: none;"/>').appendTo($('#eventList'))
                     .append($('<td colspan="12"/>').html(sapTable));
@@ -281,6 +290,7 @@
 //                        .append($('<td/>').text(sapRequest.integrationMessage))
                         .append($('<td/>').text(sapRequest.clientId))
 //                        .append($('<td/>').text(sapRequest.integrationMessage))
+                        .append($('<td/>').html(repeatRequest(sapRequest)))
                         ;
 			    });
 			}
