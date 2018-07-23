@@ -9,6 +9,9 @@ import org.joda.time.DateTime;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+import pt.ist.fenixframework.Atomic;
+import pt.ist.fenixframework.Atomic.TxMode;
+
 public class SapRequest extends SapRequest_Base {
     
     public static final Comparator<SapRequest> COMPARATOR_BY_DATE = new Comparator<SapRequest>() {
@@ -44,6 +47,7 @@ public class SapRequest extends SapRequest_Base {
         setIntegrationMessage(messages.toString());
     }
   
+    @Atomic(mode = TxMode.WRITE)
     public void delete() {
         setAnulledRequest(null);
         setEvent(null);
