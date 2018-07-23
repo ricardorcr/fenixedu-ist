@@ -32,7 +32,7 @@ public class SapRequest extends SapRequest_Base {
         setSent(false);
         setWhenCreated(new DateTime());
     }
-
+  
     public JsonObject getIntegrationMessageAsJson() {
         final String message = getIntegrationMessage();
         return message == null || message.isEmpty() ? new JsonObject() : new JsonParser().parse(message).getAsJsonObject();
@@ -43,7 +43,7 @@ public class SapRequest extends SapRequest_Base {
         messages.add(key, message);
         setIntegrationMessage(messages.toString());
     }
-
+  
     public void delete() {
         setAnulledRequest(null);
         setEvent(null);
@@ -55,5 +55,4 @@ public class SapRequest extends SapRequest_Base {
         }
         deleteDomainObject();
     }
-
 }

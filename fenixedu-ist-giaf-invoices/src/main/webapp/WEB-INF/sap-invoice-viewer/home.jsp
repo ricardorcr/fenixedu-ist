@@ -109,6 +109,7 @@
             <th colspan="3" style="text-align: center;"><spring:message code="label.event.fine" text="Fine"/></th>
             <th colspan="3" style="text-align: center;"><spring:message code="label.event.interest" text="Interest"/></th>
             <th></th>
+            <th></th>
 		</tr>
 		<tr>
             <th><spring:message code="label.event.total" text="Total"/></th>
@@ -151,7 +152,6 @@
   </div>
 </div>
 
-
 <script type="text/javascript">
 	var events = ${events};
 	var contextPath = '<%= contextPath %>';
@@ -170,6 +170,24 @@
 			return '<spring:message code="label.no" text="No"/>';
 		}
 	}
+
+    function syncEvent(eventId) {
+        return '<form method="post" action="' + contextPath + '/sap-invoice-viewer/' + eventId + '/sync">'
+        	   + '${csrf.field()}'
+        	   + '<button type="submit" class="btn btn-warning"><spring:message code="label.repeat.request" text="Repeat Request"/></button>'
+        	   + '</form>'
+        	   ;
+    }
+
+    function deleteRequest(sapRequest) {
+        if (!sapRequest.integrated) {
+            return '<form method="post" action="' + contextPath + '/sap-invoice-viewer/' + sapRequest.id + '/delete">'
+               + '${csrf.field()}'
+               + '<button type="submit" class="btn btn-warning"><spring:message code="label.delete" text="Repeat Request"/></button>'
+               + '</form>'
+               ;
+        }
+    }
 
     function sentPart(sapRequest) {
         if (sapRequest.sent) {
@@ -247,6 +265,7 @@
                 .append($('<td/>').text(event.interestExemptionAmount))
                 .append($('<td/>').text(event.paidInterestAmount))
                 .append($('<td/>').html(expandButton(i, hasSapRequests)))
+                .append($('<td/>').html(syncEvent(event.eventId)))
                 ;
 
 			if (hasSapRequests) {
@@ -262,6 +281,7 @@
                     .append($('<th/>').text('<spring:message code="label.sapRequest.sapDocumentNumber" text="Sap Document Number"/>'))
                     .append($('<th/>').text('<spring:message code="label.sapRequest.request" text="Request / Response"/>'))
                     .append($('<th/>').text('<spring:message code="label.sapRequest.clientId" text="clientId"/>'))
+                    .append($('<th/>').text(''))
                     ;
 			    $('<tr id="eventDetailRow' + i + '" style="display: none;"/>').appendTo($('#eventList'))
                     .append($('<td colspan="12"/>').html(sapTable));
@@ -281,6 +301,7 @@
 //                        .append($('<td/>').text(sapRequest.integrationMessage))
                         .append($('<td/>').text(sapRequest.clientId))
 //                        .append($('<td/>').text(sapRequest.integrationMessage))
+                        .append($('<td/>').html(deleteRequest(sapRequest)))
                         ;
 			    });
 			}

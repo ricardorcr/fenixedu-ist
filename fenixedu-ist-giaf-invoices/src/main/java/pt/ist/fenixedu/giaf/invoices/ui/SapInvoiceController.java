@@ -29,6 +29,7 @@ import org.fenixedu.bennu.core.domain.User;
 import org.fenixedu.bennu.spring.portal.SpringFunctionality;
 import org.joda.time.DateTime;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -38,6 +39,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 import pt.ist.fenixedu.domain.SapRequest;
+import pt.ist.fenixedu.giaf.invoices.ErrorLogConsumer;
+import pt.ist.fenixedu.giaf.invoices.EventLogger;
+import pt.ist.fenixedu.giaf.invoices.EventProcessor;
 
 @SpringFunctionality(app = InvoiceController.class, title = "title.sap.invoice.viewer")
 @RequestMapping("/sap-invoice-viewer")
@@ -58,6 +62,48 @@ public class SapInvoiceController {
             model.addAttribute("events", events);
         }
         return "sap-invoice-viewer/home";
+    }
+
+    @RequestMapping(value = "/{event}/sync", method = RequestMethod.POST)
+    public String syncEvent(final @PathVariable Event event, final Model model) {
+        final StringBuilder errors = new StringBuilder();
+        final ErrorLogConsumer errorLogConsumer = new ErrorLogConsumer() {
+
+            @Override
+            public void accept(final String oid, final String user, final String name, final String amount,
+                    final String cycleType, final String error, final String args, final String type,
+                    final String countryOfVatNumber, final String vatNumber, final String address, final String locality,
+                    final String postCode, final String countryOfAddress, final String paymentMethod, final String documentNumber,
+                    final String action) {
+
+                if (errors.length() > 0) {
+                    errors.append("\n");
+                }
+                errors.append(error);
+            }
+        };
+        final EventLogger elogger = (msg, args) -> {
+            if (errors.length() > 0) {
+                errors.append("\n");
+            }
+            errors.append(msg);
+            errors.append(": ");
+            for (final Object o : args) {
+                errors.append(", ");
+                errors.append(o);
+            }
+        };
+        EventProcessor.syncEventWithSap(errorLogConsumer, elogger, event);
+
+        model.addAttribute("errors", errors.toString());
+        return home(event.getPerson().getUsername(), model);
+    }
+
+    @RequestMapping(value = "/{sapRequest}/delete", method = RequestMethod.POST)
+    public String delete(final @PathVariable SapRequest sapRequest, final Model model) {
+        final Event event = sapRequest.getEvent();
+        sapRequest.delete();
+        return home(event.getPerson().getUsername(), model);
     }
 
     private JsonObject toJsonObject(final Event event, final DateTime when) {
