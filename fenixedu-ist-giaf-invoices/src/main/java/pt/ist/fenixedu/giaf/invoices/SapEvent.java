@@ -55,6 +55,7 @@ import pt.ist.fenixedu.domain.SapDocumentFile;
 import pt.ist.fenixedu.domain.SapRequest;
 import pt.ist.fenixedu.domain.SapRequestType;
 import pt.ist.fenixedu.domain.SapRoot;
+import pt.ist.fenixedu.util.PostalCodeValidator;
 import pt.ist.fenixframework.FenixFramework;
 import pt.ist.sap.client.SapFinantialClient;
 
@@ -1042,9 +1043,10 @@ public class SapEvent {
         clientData.addProperty("companyName", person.getName());
         clientData.addProperty("clientId", clientId);
         //country must be the same as the fiscal country
-        clientData.addProperty("country", clientId.substring(0, 2));
+        final String countryCode = clientId.substring(0, 2);
+        clientData.addProperty("country", countryCode);
 
-        PhysicalAddress physicalAddress = Utils.toAddress(person);
+        PhysicalAddress physicalAddress = Utils.toAddress(person, countryCode);
         clientData.addProperty("street",
                 physicalAddress != null && !Strings.isNullOrEmpty(physicalAddress.getAddress().trim()) ? Utils
                         .limitFormat(MAX_SIZE_ADDRESS, physicalAddress.getAddress()) : MORADA_DESCONHECIDO);
@@ -1055,11 +1057,11 @@ public class SapEvent {
         String region = Utils.limitFormat(MAX_SIZE_REGION, person.getDistrictOfResidence()).trim();
         clientData.addProperty("region", !Strings.isNullOrEmpty(region) ? region : MORADA_DESCONHECIDO);
 
-        String postalCode = Utils.limitFormat(MAX_SIZE_POSTAL_CODE, person.getAreaCode()).trim();
-        clientData.addProperty("postalCode", !Strings.isNullOrEmpty(postalCode) ? postalCode : "0000-000");
+        String postalCode = physicalAddress == null ? null : Utils.limitFormat(MAX_SIZE_POSTAL_CODE, physicalAddress.getAreaCode()).trim();
+        clientData.addProperty("postalCode", !Strings.isNullOrEmpty(postalCode) ? postalCode : PostalCodeValidator.examplePostCodeFor(countryCode));
 
         clientData.addProperty("vatNumber", clientId);
-        clientData.addProperty("fiscalCountry", clientId.substring(0, 2));
+        clientData.addProperty("fiscalCountry", countryCode);
         clientData.addProperty("nationality", person.getCountry().getCode());
         clientData.addProperty("billingIndicator", 0);
 
