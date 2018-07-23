@@ -155,10 +155,10 @@ public class EventProcessor {
                     } else if (!debtFenix.equals(invoiceSap)) {
                         logError(event, errorLog, elogger, "A dívida no SAP é: " + invoiceSap.getAmountAsString()
                                 + " e no Fénix é: " + debtFenix.getAmountAsString());
-//                        if (debtFenix.greaterThan(invoiceSap)) {
-//                            logError(event, errorLog, elogger, "A dívida no Fénix é superior à dívida registada no SAP");
-//                            debtResult = sapEvent.registerInvoice(debtFenix.subtract(invoiceSap), eventWrapper.event,
-//                                    eventWrapper.isGratuity(), true, errorLog, elogger);
+                        if (debtFenix.greaterThan(invoiceSap)) {
+                            logError(event, errorLog, elogger, "A dívida no Fénix é superior à dívida registada no SAP");
+                            debtResult = sapEvent.registerInvoice(debtFenix.subtract(invoiceSap), eventWrapper.event,
+                                    eventWrapper.isGratuity(), true, errorLog, elogger);
 //                            return debtFenix.subtract(invoiceSap);
                             // criar invoice com a diferença entre debtFenix e invoiceDebtSap (se for propina aumentar a dívida no sap)
                             //passar data actual (o valor do evento mudou, não dá para saber quando, vamos assumir que mudou qd foi detectada essa diferença)
@@ -169,8 +169,8 @@ public class EventProcessor {
 //                            debtResult = sapEvent.registerCredit(eventWrapper.event, invoiceSap.subtract(debtFenix),
 //                                    eventWrapper.isGratuity(), errorLog, elogger);
 //                            logError(event, errorLog, elogger, "A dívida no SAP é maior que a dívida no Fénix!");
-//                        }
-                        debtResult = false;
+                        }
+//                        debtResult = false;
                     }
                 }
 
@@ -181,7 +181,7 @@ public class EventProcessor {
                     DebtInterestCalculator calculator = event.getDebtInterestCalculator(new DateTime());
                     List<Payment> payments = calculator.getPayments().collect(Collectors.toList());
                     for (Payment payment : payments) {
-                        if (payment.isForDebt() && payment.getAmount().compareTo(BigDecimal.ZERO) > 1
+                        if (payment.isForDebt() && payment.getAmount().compareTo(BigDecimal.ZERO) > 0
                                 && !sapEvent.hasPayment(payment.getId())
                                 && payment.getDate().isAfter(EventWrapper.SAP_TRANSACTIONS_THRESHOLD)) {
                             boolean result = sapEvent.registerPayment(payment, errorLog, elogger);
@@ -193,7 +193,7 @@ public class EventProcessor {
 
                     //Exemptions                    
                     for (CreditEntry creditEntry : calculator.getCreditEntries()) {
-                        if (creditEntry.isForDebt() && creditEntry.getAmount().compareTo(BigDecimal.ZERO) > 1
+                        if (creditEntry.isForDebt() && creditEntry.getAmount().compareTo(BigDecimal.ZERO) > 0
                                 && !sapEvent.hasCredit(creditEntry.getId())
                                 && creditEntry.getDate().isAfter(EventWrapper.SAP_TRANSACTIONS_THRESHOLD)) {
                             boolean result =

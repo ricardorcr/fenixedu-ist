@@ -227,7 +227,7 @@ public class SapEvent {
 
     private DateTime getEntryDate(Event event) {
         if (event.getWhenOccured().getYear() < currentDate.getYear()) {
-            return new DateTime(currentDate.getYear(), 01, 01, 00, 00);
+            return new DateTime(currentDate.getYear() - 1, 12, 31, 23, 59);
         }
         return event.getWhenOccured();
     }
@@ -556,10 +556,15 @@ public class SapEvent {
         // e associar o restante à(s) factura(s) seguinte(s)
         SimpleImmutableEntry<List<SapEventEntry>, Money> openInvoicesAndRemainingAmount = getOpenInvoicesAndRemainingValue();
 
-        Money payedAmount = new Money(payment.getAmount());
+        Money payedAmount = new Money(payment.getUsedAmountInDebts());
         Money firstRemainingAmount = openInvoicesAndRemainingAmount.getValue();
         List<SapEventEntry> openInvoices = openInvoicesAndRemainingAmount.getKey();
 
+        final Money payedInterest = new Money(payment.getUsedAmountInInterests());
+        if (payedInterest.isPositive()) {
+            registerInterest(payedInterest, clientId, transactionDetail, errorLog, elogger);
+        }
+        
         if (firstRemainingAmount.isZero()) {
             // não há facturas abertas, fazer adiantamento, sobre a última factura!!
             return registerAdvancement(Money.ZERO, payedAmount, getLastInvoiceNumber(), clientId, transactionDetail, errorLog,
@@ -703,6 +708,10 @@ public class SapEvent {
             return false;
         }
         return true;
+    }
+
+    private void registerInterest(final Money payedInterest, final String clientId, final AccountingTransactionDetail transactionDetail,
+            final ErrorLogConsumer errorLog, final EventLogger elogger) {
     }
 
     public boolean processPendingRequests(Event event, ErrorLogConsumer errorLog, EventLogger elogger) {
@@ -949,7 +958,7 @@ public class SapEvent {
         ExecutionYear executionYear = Utils.executionYearOf(event);
         LocalDate startDate = isNewDate ? currentDate : event.getWhenOccured().toLocalDate();
         if (startDate.getYear() < currentDate.getYear()) {
-            startDate = new LocalDate(currentDate.getYear(), 01, 01);
+            startDate = new LocalDate(currentDate.getYear() - 1, 12, 31);
         }
         LocalDate endDate = executionYear.getEndDateYearMonthDay().toLocalDate();
         if (endDate.isBefore(startDate)) {
