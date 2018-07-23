@@ -1439,41 +1439,36 @@ public class SapEvent {
 
     private void logError(Event event, String clientId, ErrorLogConsumer errorLog, EventLogger elogger, String returnMessage,
             String action, JsonObject sentData, SapRequest sr) {
-        errorLog.accept(event.getExternalId(), clientId, event.getPerson().getName(), "", "", returnMessage, "", "",
+        final Person person = event.getPerson();
+        errorLog.accept(event.getExternalId(), clientId, person.getName(), "", "", returnMessage, "", "",
                 sentData.get("clientData").getAsJsonObject().get("fiscalCountry").getAsString(), clientId,
                 sentData.get("clientData").getAsJsonObject().get("street").getAsString(), "",
                 sentData.get("clientData").getAsJsonObject().get("postalCode").getAsString(), "", "", "", action);
-        elogger.log("Pessoa %s: evento: %s %s %s %s %n", event.getPerson().getExternalId(), event.getExternalId(), clientId,
+        elogger.log("Pessoa %s (%s): evento: %s %s %s %s %n", person.getExternalId(), person.getUsername(), event.getExternalId(), clientId,
                 returnMessage, action);
 
         //Write to SapRequest in json format
         JsonObject errorMessage = new JsonObject();
         errorMessage.addProperty("ID Evento", event.getExternalId());
-        errorMessage.addProperty("Utilizador", event.getPerson().getUsername());
+        errorMessage.addProperty("Utilizador", person.getUsername());
         errorMessage.addProperty("Nº Contribuinte", clientId);
-        errorMessage.addProperty("Nome", event.getPerson().getName());
+        errorMessage.addProperty("Nome", person.getName());
         errorMessage.addProperty("Mensagem", returnMessage);
         errorMessage.addProperty("País Fiscal", sentData.get("clientData").getAsJsonObject().get("fiscalCountry").getAsString());
         errorMessage.addProperty("Morada", sentData.get("clientData").getAsJsonObject().get("street").getAsString());
         errorMessage.addProperty("Código Postal", sentData.get("clientData").getAsJsonObject().get("postalCode").getAsString());
         errorMessage.addProperty("Tipo Documento", action);
 
-        JsonObject messages = null;
-        if (sr.getIntegrationMessage() == null) {
-            messages = new JsonObject();
-        } else {
-            messages = new JsonParser().parse(sr.getIntegrationMessage()).getAsJsonObject();
-        }
-        messages.add("Cliente", errorMessage);
-        sr.setIntegrationMessage(messages.toString());
+        sr.addIntegrationMessage("Cliente", errorMessage);
     }
 
     private void logError(Event event, ErrorLogConsumer errorLog, EventLogger elogger, String errorMessage, String documentNumber,
             String action, SapRequest sr) {
         BigDecimal amount = null;
         DebtCycleType cycleType = Utils.cycleType(event);
+        final Person person = event.getPerson();
 
-        errorLog.accept(event.getExternalId(), event.getPerson().getUsername(), event.getPerson().getName(),
+        errorLog.accept(event.getExternalId(), person.getUsername(), person.getName(),
                 amount == null ? "" : amount.toPlainString(), cycleType == null ? "" : cycleType.getDescription(), errorMessage,
                 "", "", "", "", "", "", "", "", "", documentNumber, action);
         elogger.log("%s: %s %s %s %n", event.getExternalId(), errorMessage, documentNumber, action);
@@ -1481,20 +1476,14 @@ public class SapEvent {
         //Write to SapRequest in json format
         JsonObject returnMessage = new JsonObject();
         returnMessage.addProperty("ID Evento", event.getExternalId());
-        returnMessage.addProperty("Utilizador", event.getPerson().getUsername());
-        returnMessage.addProperty("Nome", event.getPerson().getName());
+        returnMessage.addProperty("Utilizador", person.getUsername());
+        returnMessage.addProperty("Nome", person.getName());
         returnMessage.addProperty("Ciclo", cycleType != null ? cycleType.getDescription() : "");
         returnMessage.addProperty("Mensagem", errorMessage);
         returnMessage.addProperty("Nº Documento", documentNumber);
         returnMessage.addProperty("Tipo Documento", action);
 
-        JsonObject messages = null;
-        if (sr.getIntegrationMessage() == null) {
-            messages = new JsonObject();
-        } else {
-            messages = new JsonParser().parse(sr.getIntegrationMessage()).getAsJsonObject();
-        }
-        messages.add("Documento", returnMessage);
-        sr.setIntegrationMessage(messages.toString());
+        sr.addIntegrationMessage("Documento", returnMessage);
     }
+
 }

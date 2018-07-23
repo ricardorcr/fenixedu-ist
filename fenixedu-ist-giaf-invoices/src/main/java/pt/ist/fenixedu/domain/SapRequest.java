@@ -7,6 +7,7 @@ import org.fenixedu.academic.util.Money;
 import org.joda.time.DateTime;
 
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 public class SapRequest extends SapRequest_Base {
     
@@ -31,7 +32,18 @@ public class SapRequest extends SapRequest_Base {
         setSent(false);
         setWhenCreated(new DateTime());
     }
+  
+    public JsonObject getIntegrationMessageAsJson() {
+        final String message = getIntegrationMessage();
+        return message == null || message.isEmpty() ? new JsonObject() : new JsonParser().parse(message).getAsJsonObject();
+    }
 
+    public void addIntegrationMessage(final String key, final JsonObject message) {
+        final JsonObject messages = getIntegrationMessageAsJson();
+        messages.add(key, message);
+        setIntegrationMessage(messages.toString());
+    }
+  
     public void delete() {
         setAnulledRequest(null);
         setEvent(null);
@@ -43,5 +55,4 @@ public class SapRequest extends SapRequest_Base {
         }
         deleteDomainObject();
     }
-    
 }
