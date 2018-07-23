@@ -31,5 +31,17 @@ public class SapRequest extends SapRequest_Base {
         setSent(false);
         setWhenCreated(new DateTime());
     }
+
+    public void delete() {
+        setAnulledRequest(null);
+        setEvent(null);
+        setOriginalRequest(null);
+        setPayment(null);
+        final SapDocumentFile documentFile = getSapDocumentFile();
+        if (documentFile != null) {
+            documentFile.delete();
+        }
+        deleteDomainObject();
+    }
     
 }
