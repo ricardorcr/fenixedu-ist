@@ -199,14 +199,12 @@
     }
 
     function sapDocumentNumberPart(sapRequest) {
-    	if (true) {
-    		var link = contextPath + '/invoice-downloader/sap/' + sapRequest.id + '/' + sapRequest.sapDocumentNumber + '.pdf';
-    		return '<a href="' + link + '">' + 'xpto' + '</a>';
-    	}
-        if (sapRequest.sapDocumentNumber == null && false) {
+        if (sapRequest.sapDocumentNumber == null) {
         	return '';
         } else {
-        	return sapRequest.sapDocumentNumber;
+            var docName = sapRequest.sapDocumentNumber.replace("\/", "_");
+            var link = contextPath + '/invoice-downloader/sap/' + sapRequest.id + '/' + docName + '.pdf';
+            return '<a href="' + link + '">' + sapRequest.sapDocumentNumber + '</a>';
         }
     }
 
