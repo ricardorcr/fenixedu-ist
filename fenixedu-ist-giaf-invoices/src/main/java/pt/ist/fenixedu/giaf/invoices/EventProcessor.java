@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 
 import org.fenixedu.academic.domain.accounting.Event;
 import org.fenixedu.academic.domain.accounting.calculator.CreditEntry;
+import org.fenixedu.academic.domain.accounting.calculator.DebtExemption;
 import org.fenixedu.academic.domain.accounting.calculator.DebtInterestCalculator;
 import org.fenixedu.academic.domain.accounting.calculator.Payment;
 import org.fenixedu.academic.util.Money;
@@ -193,13 +194,14 @@ public class EventProcessor {
 
                     //Exemptions                    
                     for (CreditEntry creditEntry : calculator.getCreditEntries()) {
-                        if (creditEntry.isForDebt() && creditEntry.getAmount().compareTo(BigDecimal.ZERO) > 0
-                                && !sapEvent.hasCredit(creditEntry.getId())
-                                && creditEntry.getDate().isAfter(EventWrapper.SAP_TRANSACTIONS_THRESHOLD)) {
-                            boolean result =
-                                    sapEvent.registerCredit(event, creditEntry, eventWrapper.isGratuity(), errorLog, elogger);
-                            if (!result) {
-                                return;
+                        if (creditEntry instanceof DebtExemption) {
+                            if (creditEntry.getAmount().compareTo(BigDecimal.ZERO) > 0 && !sapEvent.hasCredit(creditEntry.getId())
+                                    && creditEntry.getDate().isAfter(EventWrapper.SAP_TRANSACTIONS_THRESHOLD)) {
+                                boolean result =
+                                        sapEvent.registerCredit(event, creditEntry, eventWrapper.isGratuity(), errorLog, elogger);
+                                if (!result) {
+                                    return;
+                                }
                             }
                         }
                     }
