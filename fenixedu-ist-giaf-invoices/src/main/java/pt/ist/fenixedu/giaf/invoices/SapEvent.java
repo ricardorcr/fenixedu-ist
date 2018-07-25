@@ -83,7 +83,7 @@ public class SapEvent {
     public boolean registerInvoice(Money debtFenix, Event event, boolean isGratuity, boolean isNewDate, ErrorLogConsumer errorLog,
             EventLogger elogger) throws Exception {
 
-        if (isGratuity) {
+        if (isToProcessDebt(event, isGratuity)) {
             //if debt is greater than invoice, then there was a debt registered and the correspondent invoice failed, don't register the debt again
             if (!getDebtAmount().greaterThan(getInvoiceAmount())) {
                 boolean result = registerDebt(debtFenix, event, isNewDate, errorLog, elogger);
@@ -226,7 +226,7 @@ public class SapEvent {
         // diminuir divida no sap (se for propina diminuir dívida) e credit note na última factura existente
         // se o valor pago nesta factura for superior à nova dívida, o que fazer? terá que existir nota crédito no fenix -> sim
 
-        if (isGratuity) {
+        if (isToProcessDebt(event, isGratuity)) {
             //if the debt credit amount is greater than the credit amount it means that a credit debt was registered but the correspondent invoice credit failed
             //we don't register the credit debt again
             if (!getDebtCreditAmount().greaterThan(getCreditAmount())) {
@@ -400,6 +400,16 @@ public class SapEvent {
             boolean result = registerInterest(payedInterest, clientId, transactionDetail, errorLog, elogger);
             if (!result) {
                 return result;
+            }
+        }
+
+        if (payedAmount.isZero()) {
+            if (payedInterest.isZero()) {
+                //there was a payment made and the debt is already closed, it's an extra payment (advancement)
+                payedAmount = new Money(payment.getAmount());
+            } else {
+                //it was all used for interests, there is nothing more to register
+                return true;
             }
         }
 
@@ -598,6 +608,9 @@ public class SapEvent {
         return event.getWhenOccured();
     }
 
+    private boolean isToProcessDebt(Event event, boolean isGratuity) {
+        return isGratuity && !event.getWhenOccured().isAfter(EventWrapper.LIMIT);
+    }
     /**
      * Sends the data to SAP
      * 

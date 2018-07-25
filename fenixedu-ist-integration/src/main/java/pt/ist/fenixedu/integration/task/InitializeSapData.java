@@ -2,7 +2,9 @@ package pt.ist.fenixedu.integration.task;
 
 import org.fenixedu.academic.domain.ExecutionYear;
 import org.fenixedu.academic.domain.accounting.Event;
+import org.fenixedu.academic.domain.accounting.calculator.BigDecimalUtil;
 import org.fenixedu.academic.domain.accounting.calculator.DebtInterestCalculator;
+import org.fenixedu.academic.domain.accounting.calculator.Payment;
 import org.fenixedu.academic.domain.accounting.events.gratuity.GratuityEventWithPaymentPlan;
 import org.fenixedu.academic.domain.phd.debts.PhdGratuityEvent;
 import org.fenixedu.academic.util.Money;
@@ -94,7 +96,7 @@ public class InitializeSapData extends CustomTask {
             sapInvoiceRequest.setWhenSent(FIRST_DAY);
             sapInvoiceRequest.setSent(true);
             sapInvoiceRequest.setIntegrated(true);
-            if (event.isGratuity() && isToProcessDebt(event)) {
+            if (isToProcessDebt(event, event.isGratuity())) {
                 final SapRequest sapDebtRequest =
                         new SapRequest(event, clientId, paidAmount, "NG0", SapRequestType.DEBT, Money.ZERO, EMPTY_JSON_OBJECT);
                 sapDebtRequest.setWhenSent(FIRST_DAY);
@@ -125,6 +127,17 @@ public class InitializeSapData extends CustomTask {
             sapPaymentRequest.setWhenSent(FIRST_DAY);
             sapPaymentRequest.setSent(true);
             sapPaymentRequest.setIntegrated(true);
+        }
+
+        if (paidAmount.add(interestAndfineAmount).isZero()) {
+            final Money totalAmount = new Money(BigDecimalUtil.sum(debtInterestCalculator.getPayments(), Payment::getAmount));
+            if (totalAmount.isPositive()) {
+                final SapRequest sapAdvancementRequest = new SapRequest(event, clientId, Money.ZERO, "NP0",
+                        SapRequestType.ADVANCEMENT, totalAmount, EMPTY_JSON_OBJECT);
+                sapAdvancementRequest.setWhenSent(FIRST_DAY);
+                sapAdvancementRequest.setSent(true);
+                sapAdvancementRequest.setIntegrated(true);
+            }
         }
         return Money.ZERO;
     }
@@ -174,7 +187,7 @@ public class InitializeSapData extends CustomTask {
             sapCreditRequest.setWhenSent(FIRST_DAY);
             sapCreditRequest.setSent(true);
             sapCreditRequest.setIntegrated(true);
-            if (event.isGratuity() && isToProcessDebt(event)) {
+            if (isToProcessDebt(event, event.isGratuity())) {
                 final SapRequest sapDebtRequest = new SapRequest(event, clientId, amountToRegister, "NG0", SapRequestType.DEBT,
                         Money.ZERO, EMPTY_JSON_OBJECT);
                 sapDebtRequest.setWhenSent(FIRST_DAY);
@@ -215,7 +228,7 @@ public class InitializeSapData extends CustomTask {
         }
     }
 
-    private boolean isToProcessDebt(Event event) {
-        return !event.getWhenOccured().isBefore(FIRST_DAY);
+    private boolean isToProcessDebt(Event event, boolean isGratuity) {
+        return isGratuity && !event.getWhenOccured().isBefore(FIRST_DAY);
     }
 }
