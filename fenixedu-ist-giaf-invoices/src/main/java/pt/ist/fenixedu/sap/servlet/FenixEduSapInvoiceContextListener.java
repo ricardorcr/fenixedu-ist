@@ -21,6 +21,8 @@ import pt.ist.fenixframework.FenixFramework;
 @WebListener
 public class FenixEduSapInvoiceContextListener implements ServletContextListener {
 
+    public static boolean allowCloseToOpen = false;
+
     @Override
     public void contextInitialized(final ServletContextEvent sce) {
         Signal.register(AccountingTransaction.SIGNAL_ANNUL, this::handlerAccountingTransactionAnnulment);
@@ -65,10 +67,13 @@ public class FenixEduSapInvoiceContextListener implements ServletContextListener
         } else if (oldtState == EventState.OPEN && newState == EventState.CANCELLED) {
             syncEvent(event);
             throw new Error("Event state change must first be canceled in SAP"); // TODO
+        } else if (allowCloseToOpen && oldtState == EventState.CLOSED && newState == EventState.OPEN) {
+            // Ack. Fuck it...
         } else {
             throw new Error("New event state change that must be handled: "
                     + (oldtState == null ? "" : oldtState.name()) + " -> "
-                    + (newState == null ? "null" : newState.name()));
+                    + (newState == null ? "null" : newState.name())
+                    + " on event: " + event.getExternalId());
         }
     }
 
