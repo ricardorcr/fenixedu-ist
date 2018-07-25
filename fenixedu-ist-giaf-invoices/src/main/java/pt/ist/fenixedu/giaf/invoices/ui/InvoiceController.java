@@ -106,7 +106,7 @@ public class InvoiceController {
 
     static boolean isAllowedToAccess(final User user) {
         final User currentUser = Authenticate.getUser();
-        return currentUser == user || isAcademicServiceStaff(currentUser);
+        return currentUser != null && (currentUser == user || isAcademicServiceStaff(currentUser));
     }
 
     static boolean isAcademicServiceStaff(final User user) {
