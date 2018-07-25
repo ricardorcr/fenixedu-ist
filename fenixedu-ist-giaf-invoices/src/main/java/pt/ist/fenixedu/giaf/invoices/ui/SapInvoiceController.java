@@ -1,4 +1,5 @@
 /**
+
  * Copyright © 2013 Instituto Superior Técnico
  *
  * This file is part of FenixEdu IST GIAF Invoices.
@@ -66,6 +67,12 @@ public class SapInvoiceController {
 
     @RequestMapping(value = "/{event}/sync", method = RequestMethod.POST)
     public String syncEvent(final @PathVariable Event event, final Model model) {
+        final String errors = syncEvent(event);
+        model.addAttribute("errors", errors);
+        return home(event.getPerson().getUsername(), model);
+    }
+
+    public static String syncEvent(final Event event) {
         final StringBuilder errors = new StringBuilder();
         final ErrorLogConsumer errorLogConsumer = new ErrorLogConsumer() {
 
@@ -95,8 +102,7 @@ public class SapInvoiceController {
         };
         EventProcessor.syncEventWithSap(errorLogConsumer, elogger, event);
 
-        model.addAttribute("errors", errors.toString());
-        return home(event.getPerson().getUsername(), model);
+        return errors.toString();
     }
 
     @RequestMapping(value = "/{sapRequest}/delete", method = RequestMethod.POST)
