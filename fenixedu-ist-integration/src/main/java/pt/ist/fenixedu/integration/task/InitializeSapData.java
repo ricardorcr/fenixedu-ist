@@ -110,7 +110,7 @@ public class InitializeSapData extends CustomTask {
         }
 
         final Money interestAndfineAmount =
-                new Money(debtInterestCalculator.getPaidInterestAmount().add(debtInterestCalculator.getPaidInterestAmount()));
+                new Money(debtInterestCalculator.getPaidInterestAmount().add(debtInterestCalculator.getPaidFineAmount()));
         if (interestAndfineAmount.isPositive()) {
             payments = payments.add(interestAndfineAmount);
 
