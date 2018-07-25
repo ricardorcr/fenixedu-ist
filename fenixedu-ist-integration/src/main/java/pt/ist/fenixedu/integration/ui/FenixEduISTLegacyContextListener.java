@@ -199,7 +199,7 @@ public class FenixEduISTLegacyContextListener implements ServletContextListener 
                 }
 
                 final String tin = ClientMap.uVATNumberFor(person);
-                final String tinCountryCode = tin.length() > 2 && Character.isAlphabetic(tin.charAt(0)) && Character.isAlphabetic(tin.charAt(1)) ?
+                final String tinCountryCode = tin != null && tin.length() > 2 && Character.isAlphabetic(tin.charAt(0)) && Character.isAlphabetic(tin.charAt(1)) ?
                         tin.substring(0, 2) : null;
                 if (tin == null || tin.isEmpty()) {
                     warnings.add(BundleUtil.getString("resources.FenixeduIstIntegrationResources", "label.person.details.vatNumber.none"));
