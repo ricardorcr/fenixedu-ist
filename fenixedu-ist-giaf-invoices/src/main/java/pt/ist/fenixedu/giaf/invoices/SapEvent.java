@@ -834,8 +834,8 @@ public class SapEvent {
         SapEvent sapOriginEvent = new SapEvent(originEvent);
         SapRequest originalPayment = sapOriginEvent.getAdvancementPaymentsFor(partialPayment.getCreditEntry().getId()).findAny()
                 .orElseThrow(() -> new Error("There is no advancement registered for paymentId: " + partialPayment.getCreditEntry().getId()));
-        JsonObject advInPayment = toJsonUseAdvancementInPayment(payment, originalPayment, amountUsed, openInvoice.getDocumentNumber(), isNewDate);
-        final SapRequest sapRequest = new SapRequest(event, originalPayment.getClientId(), amountUsed, getDocumentNumber(advInPayment, true),
+        JsonObject advInPayment = toJsonUseAdvancementInPayment(payment, originalPayment, amountUsed, openInvoice, isNewDate);
+        final SapRequest sapRequest = new SapRequest(event, openInvoice.getClientId(), amountUsed, getDocumentNumber(advInPayment, true),
                 requestType, Money.ZERO, advInPayment);
         sapRequest.setPayment(payment.getTransaction());
         if (excessRefund != null) {
@@ -844,15 +844,15 @@ public class SapEvent {
         sapRequest.setAdvancementRequest(originalPayment);
     }
 
-    private JsonObject toJsonUseAdvancementInPayment(final AccountingTransactionDetail payment, final SapRequest originalPayment, final Money amountToUse, final String invoiceNumber, final boolean isNewDate) {
+    private JsonObject toJsonUseAdvancementInPayment(final AccountingTransactionDetail payment, final SapRequest originalPayment, final Money amountToUse, final SapRequest invoice, final boolean isNewDate) {
         DateTime documentDate = payment.getWhenRegistered();
         if (isNewDate) {
             documentDate = new DateTime();
         }
         JsonObject data =
-                toJson(event, originalPayment.getClientJson(), documentDate, false, false, false, false, false);
+                toJson(event, invoice.getClientJson(), documentDate, false, false, false, false, false);
 
-        JsonObject paymentDocument = toJsonPaymentDocument(amountToUse, "NP", invoiceNumber, documentDate,
+        JsonObject paymentDocument = toJsonPaymentDocument(amountToUse, "NP", invoice.getDocumentNumber(), documentDate,
                 "OU", getPaymentMethodReference(payment), SAFTPTSettlementType.NN.toString(), true);
         paymentDocument.addProperty("excessPayment", amountToUse.negate().toPlainString());//the payment amount must be zero
         paymentDocument.addProperty("isToCreditTotal", true);
