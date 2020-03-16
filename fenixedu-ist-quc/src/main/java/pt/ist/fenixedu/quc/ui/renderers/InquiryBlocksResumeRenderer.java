@@ -134,7 +134,8 @@ public abstract class InquiryBlocksResumeRenderer extends OutputRenderer {
 
     protected String getColoredBar(InquiryResult inquiryResult) {
         StringBuilder sb = new StringBuilder("<div class='");
-        sb.append("bar-").append(inquiryResult.getResultClassification().name().toLowerCase());
+        String color = inquiryResult != null ? inquiryResult.getResultClassification().name().toLowerCase() : "grey";
+        sb.append("bar-").append(color);
         sb.append("'><div>&nbsp;</div>");
         return sb.toString();
     }
